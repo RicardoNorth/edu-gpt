@@ -7,6 +7,7 @@ import PostScreen from '../modules/post/screens/PostScreen'
 import AnswerScreen from '../modules/answer/screens/AnswerScreen'
 import QuestionScreen from '../modules/question/screens/QuestionScreen'
 import BattleScreen from '../modules/battle/screens/BattleScreen'
+import ProfileScreen from '../modules/profile/screens/ProfileScreen'
 
 const Tab = createBottomTabNavigator()
 
@@ -43,6 +44,9 @@ export default function BottomTabNavigator() {
             case '对战':
               iconName = 'game-controller-outline'
               break
+            case '我的':
+              iconName = 'person-outline'
+              break
           }
 
           return <Ionicons name={iconName} size={size} color={color} />
@@ -54,6 +58,7 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="问题" component={AnswerScreen} />
       <Tab.Screen name="出题" component={QuestionScreen} />
       <Tab.Screen name="对战" component={BattleScreen} />
+      <Tab.Screen name="我的" component={ProfileScreen} />
     </Tab.Navigator>
   )
 }
