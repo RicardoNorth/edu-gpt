@@ -1,15 +1,26 @@
-// src/modules/profile/screens/ProfileScreen.tsx
-import { View, Text, StyleSheet } from 'react-native'
+import React from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
+import BackgroundBanner from '../components/BackgroundBanner';
+import AvatarCard from '../components/AvatarCard';
+import EditAndSearchButtons from '../components/EditAndSearchButtons';
+import RecommendedUserList from '../components/RecommendedUserList';
+import DurationChart from '../components/DurationChart';
 
 export default function ProfileScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>这是我的页面</Text>
-    </View>
-  )
+    <ScrollView contentContainerStyle={styles.container}>
+      <BackgroundBanner />
+      <AvatarCard />
+      <EditAndSearchButtons />
+      <DurationChart />
+      <RecommendedUserList />
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  text: { fontSize: 18 },
-})
+  container: {
+    paddingBottom: 40,
+    backgroundColor: '#fff',
+  },
+});
