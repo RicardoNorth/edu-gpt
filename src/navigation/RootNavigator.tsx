@@ -1,18 +1,30 @@
-// src/navigation/RootNavigator.tsx
+import React from 'react'
+import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import PostScreen from '../modules/post/screens/PostScreen' // 👈 模块路径
+
+import BottomTabNavigator from './BottomTabNavigator'
+import LoginScreen from '../modules/auth/screens/LoginScreen'
+import { useAuthStore } from '../modules/auth/store'
 
 export type RootStackParamList = {
-  Home: undefined
-  Posts: undefined
+  Login: undefined
+  MainApp: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
 export default function RootNavigator() {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
+
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="Posts" component={PostScreen} />
-    </Stack.Navigator>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isLoggedIn ? (
+          <Stack.Screen name="MainApp" component={BottomTabNavigator} />
+        ) : (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   )
 }

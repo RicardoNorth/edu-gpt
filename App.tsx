@@ -1,11 +1,6 @@
-// App.tsx
-import { NavigationContainer } from '@react-navigation/native'
-import BottomTabNavigator from './src/navigation/BottomTabNavigator'
+import React from 'react';
+import RootNavigator from './src/navigation/RootNavigator';
 
 export default function App() {
-  return (
-    <NavigationContainer>
-      <BottomTabNavigator />
-    </NavigationContainer>
-  )
+  return <RootNavigator />;
 }
