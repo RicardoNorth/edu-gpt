@@ -42,6 +42,36 @@ const dummyPosts = [
     likes: 6907,
     saves: 18000,
   },
+  {
+    id: '4',
+    nickname: '张君',
+    avatar: defaultAvatar,
+    title: '发现自己什么都不懂、什么都想学，是不是一种病态？',
+    preview:
+      '只是看书看课，知识非常中空，看得再多，也是低水平重复...',
+    likes: 6907,
+    saves: 18000,
+  },
+  {
+    id: '6',
+    nickname: '张君',
+    avatar: defaultAvatar,
+    title: '发现自己什么都不懂、什么都想学，是不是一种病态？',
+    preview:
+      '只是看书看课，知识非常中空，看得再多，也是低水平重复...',
+    likes: 6907,
+    saves: 18000,
+  },
+  {
+    id: '5',
+    nickname: '张君',
+    avatar: defaultAvatar,
+    title: '发现自己什么都不懂、什么都想学，是不是一种病态？',
+    preview:
+      '只是看书看课，知识非常中空，看得再多，也是低水平重复...',
+    likes: 6907,
+    saves: 18000,
+  },
 ];
 
 export default function PostListScreen() {
@@ -71,6 +101,7 @@ export default function PostListScreen() {
               </View>
             </View>
           )}
+          showsVerticalScrollIndicator={false}
         />
       </View>
     </SafeAreaView>

@@ -8,7 +8,10 @@ import DurationChart from '../components/DurationChart';
 
 export default function ProfileScreen() {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
       <BackgroundBanner />
       <AvatarCard />
       <EditAndSearchButtons />
