@@ -4,18 +4,19 @@ import { useAuthStore } from '../store';
 import { useProfileStore } from '../../profile/store';
 import { login } from '../api';
 import { getUserInfo } from '../../profile/api';
-import { saveToken } from '../../../utils/token';
 import { mergeUserInfo } from '../../../utils/user';
 
 export default function LoginScreen() {
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const setIsLoggedIn = useAuthStore((state) => state.login);
+
+  const { login: setIsLoggedIn, setToken } = useAuthStore();
   const setUser = useProfileStore((state) => state.setUser);
 
   const handleLogin = async () => {
     setError('');
+
     if (!/^\d{6,20}$/.test(studentId)) {
       setError('学号格式错误');
       return;
@@ -24,15 +25,13 @@ export default function LoginScreen() {
       setError('密码长度不能少于6位');
       return;
     }
-  
+
     try {
       const res = await login(studentId, password);
-  
       if (res.code === 10000) {
         const token = res.data.token;
-        // 存储 token
-        await saveToken(token);
-        // 请求用户信息
+        setToken(token); // ✅ 全局存储 token
+
         const userInfoRes = await getUserInfo();
         if (userInfoRes.code === 10000) {
           const localUser = useProfileStore.getState().user;
@@ -54,7 +53,6 @@ export default function LoginScreen() {
       setError('网络异常');
     }
   };
-  
 
   return (
     <View style={styles.container}>

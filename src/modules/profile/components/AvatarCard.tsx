@@ -7,7 +7,11 @@ import { useAuthStore } from '../../auth/store';
 
 export default function AvatarCard() {
   const { user, setAvatar } = useProfileStore();
-  const logout = useAuthStore((state) => state.logout);
+  const logout = () => {
+    useAuthStore.getState().logout();
+    useProfileStore.getState().resetProfile(); // ✅ 清空本地缓存的用户信息
+  };
+  
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();

@@ -1,12 +1,12 @@
-import { getToken } from '../../utils/token';
+import { useAuthStore } from '../auth/store';
 
 export const getUserInfo = async () => {
-  const token = await getToken();
+  const token = useAuthStore.getState().token;
 
   const response = await fetch('http://8.140.19.139:8080/api/v1/user/auth/get_userinfo', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });

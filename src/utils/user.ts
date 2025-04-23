@@ -1,14 +1,17 @@
 import { UserInfo } from '../modules/profile/store';
 
+const DEFAULT_AVATAR = 'default-avatar.png';
+
 export const mergeUserInfo = (
   remote: UserInfo,
   local: UserInfo | null
 ): UserInfo => {
+  const isDefaultAvatar = remote.avatar_path === DEFAULT_AVATAR;
+
   return {
     ...remote,
-    // 以服务器为主，若服务器为 null/空，保留本地字段
-    avatar_path: remote.avatar_path || local?.avatar_path || null,
+    avatar_path: isDefaultAvatar ? local?.avatar_path || null : remote.avatar_path,
     background: local?.background || remote.background || null,
-    nickname: remote.nickname || local?.nickname || '', // 昵称也可选保留
+    nickname: remote.nickname || local?.nickname || '',
   };
 };
