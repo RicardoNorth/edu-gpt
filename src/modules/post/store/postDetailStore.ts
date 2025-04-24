@@ -1,18 +1,9 @@
 import { create } from 'zustand';
-
-export interface PostDetail {
-  id: string;
-  nickname: string;
-  avatar: any;
-  title: string;
-  content: string;
-  likes: number;
-  saves: number;
-}
+import { Post } from '../../../types/post';
 
 interface PostDetailState {
-  currentPost: PostDetail | null;
-  setCurrentPost: (post: PostDetail) => void;
+  currentPost: Post | null;
+  setCurrentPost: (post: Post) => void;
   clearPost: () => void;
 }
 

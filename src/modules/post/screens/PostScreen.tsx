@@ -14,7 +14,8 @@ import { useHideTabBarOnKeyboard } from '../../../hooks/useHideTabBarOnKeyboard'
 import AnimatedSearchBar from '../components/AnimatedSearchBar';
 import PostCard from '../components/PostCard';
 import { usePostCardStore } from '../store/postCardStore';
-import { RootStackParamList } from '../../../navigation/RootNavigator'; // ✅ 路径按你的项目结构调整
+import { usePostDetailStore } from '../store/postDetailStore';
+import { RootStackParamList } from '../../../navigation/RootNavigator';
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, 'MainApp'>;
 
@@ -22,7 +23,12 @@ export default function PostListScreen() {
   useHideTabBarOnKeyboard();
   const navigation = useNavigation<Navigation>();
   const posts = usePostCardStore((state) => state.posts);
+  const setCurrentPost = usePostDetailStore((state) => state.setCurrentPost);
   const [searchText, setSearchText] = useState('');
+
+  const filteredPosts = posts.filter((post) =>
+    post.title.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -43,7 +49,7 @@ export default function PostListScreen() {
 
         {/* 帖子列表 */}
         <FlatList
-          data={posts}
+          data={filteredPosts}
           keyExtractor={(item) => item.id}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
@@ -54,7 +60,10 @@ export default function PostListScreen() {
               preview={item.preview}
               likes={item.likes}
               saves={item.saves}
-              onPress={() => console.log(`点击了帖子 ${item.id}`)}
+              onPress={() => {
+                setCurrentPost(item);
+                navigation.navigate('PostDetailScreen');
+              }}
             />
           )}
           showsVerticalScrollIndicator={false}
@@ -82,7 +91,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     marginRight: 8,
-    marginLeft: 8
+    marginLeft: 8,
   },
   postButton: {
     backgroundColor: '#007BFF',

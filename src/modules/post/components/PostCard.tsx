@@ -1,9 +1,5 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { usePostDetailStore } from '../store/postDetailStore';
-import { RootStackParamList } from '../../../navigation/RootNavigator'; // ✅ 根据实际路径调整
 
 interface PostCardProps {
   avatar: any;
@@ -15,9 +11,6 @@ interface PostCardProps {
   onPress?: () => void;
 }
 
-
-type Navigation = NativeStackNavigationProp<RootStackParamList, 'MainApp'>;
-
 export default function PostCard({
   avatar,
   nickname,
@@ -25,27 +18,10 @@ export default function PostCard({
   preview,
   likes,
   saves,
+  onPress,
 }: PostCardProps) {
-  const navigation = useNavigation<Navigation>();
-  const { setCurrentPost } = usePostDetailStore();
-
-  const handlePress = () => {
-    setCurrentPost({
-      id: Math.random().toString(),
-      nickname,
-      avatar,
-      title,
-      content:
-        '这是帖子全文内容，可以从接口获取并支持换行展示。\n\n支持多段文字、代码、图片等丰富展示。',
-      likes,
-      saves,
-    });
-
-    navigation.navigate('PostDetailScreen'); // ✅ 现在不会报错了
-  };
-
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.card}>
+    <TouchableOpacity onPress={onPress} style={styles.card}>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.header}>
         <Image source={avatar} style={styles.avatar} />

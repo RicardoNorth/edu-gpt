@@ -1,13 +1,29 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  FlatList,
+  Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import ImageViewing from 'react-native-image-viewing';
 import { usePostDetailStore } from '../store/postDetailStore';
+
+const screenWidth = Dimensions.get('window').width;
 
 export default function PostDetailScreen() {
   const navigation = useNavigation();
   const post = usePostDetailStore((state) => state.currentPost);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   if (!post) {
     return (
@@ -17,52 +33,85 @@ export default function PostDetailScreen() {
     );
   }
 
+  const renderImageItem = ({ item, index }: { item: string; index: number }) => (
+    <Pressable
+      onPress={() => {
+        setCurrentIndex(index);
+        setViewerVisible(true);
+      }}
+      android_ripple={{ color: 'transparent' }}
+      style={styles.carouselImageWrapper}
+    >
+      <Image source={{ uri: item }} style={styles.carouselImage} />
+    </Pressable>
+  );
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* 自定义导航栏 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>帖子详情</Text>
+        </Pressable>
+
+        <Image source={post.avatar} style={styles.headerAvatar} />
+
+        <Text style={styles.headerNickname} numberOfLines={1}>{post.nickname}</Text>
+
+        <Pressable style={styles.headerFollowButton}>
+          <Text style={styles.headerFollowText}>关注</Text>
+        </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>{post.title}</Text>
-        <View style={styles.userInfo}>
-          <Image source={post.avatar} style={styles.avatar} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.nickname}>{post.nickname}</Text>
-            <Text style={styles.signature}>泛若不系之舟</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* 图片轮播 */}
+        {post.image && post.image.length > 0 && (
+          <View style={styles.carouselWrapper}>
+            <FlatList
+              ref={flatListRef}
+              data={post.image}
+              renderItem={renderImageItem}
+              keyExtractor={(_, index) => index.toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+            />
+            <View style={styles.pageIndicator}>
+              <Text style={styles.pageText}>
+                {currentIndex + 1}/{post.image.length}
+              </Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.followButton}>
-            <Text style={styles.followText}>+ 关注</Text>
-          </TouchableOpacity>
-        </View>
+        )}
 
-        <Text style={styles.content}>{post.content}</Text>
+        {/* 内容区域 */}
+        <View style={styles.contentContainer}>
+          <Text style={styles.title}>{post.title}</Text>
+
+          <Text style={styles.content}>{post.content}</Text>
+
+          <Text style={styles.tags}>#学习 #AI写作 #ReactNative</Text>
+          <Text style={styles.date}>2024-11-18</Text>
+        </View>
       </ScrollView>
 
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.bottomBtn}>
-          <Ionicons name="person-add-outline" size={20} color="#333" />
-          <Text style={styles.bottomText}>关注</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomBtn}>
-          <Ionicons name="triangle-outline" size={20} color="#333" />
-          <Text style={styles.bottomText}>3215</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomBtn}>
-          <Ionicons name="caret-down-outline" size={20} color="#333" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomBtn}>
-          <Ionicons name="star-outline" size={20} color="#333" />
-          <Text style={styles.bottomText}>2380</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomBtn}>
-          <Ionicons name="chatbubble-outline" size={20} color="#333" />
-          <Text style={styles.bottomText}>372</Text>
-        </TouchableOpacity>
-      </View>
+      {/* 大图缩放预览 */}
+      <ImageViewing
+        images={post.image?.map((uri) => ({ uri })) ?? []}
+        imageIndex={currentIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+      />
     </SafeAreaView>
   );
 }
@@ -75,84 +124,91 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: '#fff',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 10,
-    color: '#2B333E',
+  backButton: {
+    paddingRight: 8,
+    paddingVertical: 4,
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100, // 留出底部栏空间
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2B333E',
-    marginBottom: 12,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  nickname: {
+  headerNickname: {
+    flex: 1,
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '500',
     color: '#333',
   },
-  signature: {
-    fontSize: 13,
-    color: '#888',
-  },
-  followButton: {
+  headerFollowButton: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2B333E',
+    borderColor: '#ff4d4f',
   },
-  followText: {
+  headerFollowText: {
     fontSize: 13,
-    color: '#2B333E',
+    color: '#ff4d4f',
     fontWeight: '500',
+  },
+  carouselWrapper: {
+    width: screenWidth,
+    height: screenWidth * 1.2,
+    position: 'relative',
+  },
+  carouselImageWrapper: {
+    width: screenWidth,
+    height: screenWidth * 1.2,
+  },
+  carouselImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  pageIndicator: {
+    position: 'absolute',
+    bottom: 12,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  pageText: {
+    color: '#fff',
+    fontSize: 13,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#2B333E',
+    marginVertical: 12,
   },
   content: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     color: '#444',
+    marginBottom: 16,
   },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    height: 60,
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    width: '100%',
-    paddingHorizontal: 8,
+  tags: {
+    color: '#007aff',
+    fontSize: 14,
+    marginBottom: 12,
   },
-  bottomBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomText: {
+  date: {
     fontSize: 12,
-    color: '#333',
-    marginTop: 2,
+    color: '#aaa',
   },
   centered: {
     flex: 1,

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,53 +8,74 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  Image,
+  ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import CNToolbar from 'react-native-cn-richtext-editor/src/CNToolbar';
-import { Bold, Underline, Strikethrough } from 'lucide-react-native';
-import { getInitialObject, getDefaultStyles } from 'react-native-cn-richtext-editor';
-import CNEditor from 'react-native-cn-richtext-editor';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { usePostCardStore } from '../store/postCardStore';
-
-const defaultStyles = getDefaultStyles();
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const editorRef = useRef<any>(null);
   const addPost = usePostCardStore((state) => state.addPost);
 
   const [title, setTitle] = useState('');
-  const [editorContent, setEditorContent] = useState([getInitialObject()]);
-  const [selectedTag, setSelectedTag] = useState<string>('body');
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [content, setContent] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
     return () => {
-      show.remove();
-      hide.remove();
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setImages([...images, result.assets[0].uri]);
+    }
+  };
+
+  const handleImagePress = (uri: string) => {
+    setSelectedImage(uri);
+    setModalVisible(true);
+  };
+
+  const handleRemoveImage = () => {
+    if (!selectedImage) return;
+    setImages(images.filter((img) => img !== selectedImage));
+    setModalVisible(false);
+  };
+
   const handleSubmit = () => {
-    if (!title || editorContent.length === 0) {
+    if (!title || !content) {
       Alert.alert('请输入标题和内容');
       return;
     }
 
     const newPost = {
-      id: Math.random().toString(),
+      id: Date.now().toString(),
       avatar: require('../../../../assets/default-avatar.png'),
       nickname: '你自己',
       title,
-      preview: editorContent[0]?.content?.[0]?.text?.slice(0, 40) + '...',
+      content,
+      preview: content.slice(0, 40) + (content.length > 40 ? '...' : ''),
+      image: images,
       likes: 0,
       saves: 0,
-      content: JSON.stringify(editorContent),
     };
 
     addPost(newPost);
@@ -63,8 +84,7 @@ export default function CreatePostScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* ✅ 顶部小发布按钮，不与状态栏重叠 */}
+      <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
         {isKeyboardVisible && (
           <TouchableOpacity
             style={[styles.floatingButton, { top: insets.top + 8 }]}
@@ -74,7 +94,18 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <View style={styles.imageRow}>
+            {images.map((uri, index) => (
+              <TouchableOpacity key={index} onPress={() => handleImagePress(uri)}>
+                <Image source={{ uri }} style={styles.imageThumb} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={handlePickImage} style={styles.imageThumbAdd}>
+              <Text style={{ fontSize: 28, color: '#999' }}>＋</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.label}>标题</Text>
           <TextInput
             style={styles.input}
@@ -84,62 +115,70 @@ export default function CreatePostScreen() {
           />
 
           <Text style={styles.label}>内容</Text>
-          <CNEditor
-            ref={editorRef}
-            style={styles.editor}
-            onSelectedTagChanged={setSelectedTag}
-            onSelectedStyleChanged={setSelectedStyles}
-            onValueChanged={setEditorContent}
+          <TextInput
+            style={styles.textarea}
             placeholder="请输入内容"
-            value={editorContent}
-            styleList={defaultStyles}
-            onFocus={() => setIsKeyboardVisible(true)}
+            value={content}
+            onChangeText={setContent}
+            multiline
           />
-
-          {/* ✅ 工具栏没有边框、贴近输入法 */}
-          {isKeyboardVisible && (
-            <CNToolbar
-              style={styles.toolbar}
-              iconSetContainerStyle={{ flexGrow: 1 }}
-              size={24}
-              selectedTag={selectedTag}
-              selectedStyles={selectedStyles}
-              onStyleKeyPress={(tool) => editorRef.current?.applyToolbar(tool)}
-              iconSet={[
-                {
-                  type: 'tool',
-                  iconArray: [
-                    { toolTypeText: 'bold', buttonTypes: 'style', iconComponent: <Bold size={20} /> },
-                    { toolTypeText: 'underline', buttonTypes: 'style', iconComponent: <Underline size={20} /> },
-                    { toolTypeText: 'lineThrough', buttonTypes: 'style', iconComponent: <Strikethrough size={20} /> },
-                  ],
-                },
-              ]}
-            />
-          )}
 
           {!isKeyboardVisible && (
             <TouchableOpacity style={styles.button} onPress={handleSubmit}>
               <Text style={styles.buttonText}>发布</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
+
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <TouchableOpacity style={styles.modalOption} onPress={handleRemoveImage}>
+                  <Text style={[styles.modalText, { color: 'red' }]}>删除</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalOption} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.modalText}>取消</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fff',
+  safeArea: { flex: 1, backgroundColor: '#fff' },
+  container: { padding: 16 },
+  imageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
   },
-  container: {
-    flex: 1,
-    padding: 16,
+  imageThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  imageThumbAdd: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   label: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 6,
@@ -147,27 +186,26 @@ const styles = StyleSheet.create({
   input: {
     borderBottomWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 0,
+    fontSize: 16,
     paddingVertical: 8,
-    fontSize: 16,
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  editor: {
-    minHeight: 200,
+  textarea: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
     fontSize: 16,
-    color: '#333',
-    padding: 0,
-    margin: 0,
-    backgroundColor: 'transparent',
-  },
-  toolbar: {
-    paddingVertical: 6,
+    textAlignVertical: 'top',
+    marginBottom: 12,
+    minHeight: 120,
   },
   button: {
     backgroundColor: '#2B333E',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
+    marginTop: 16,
   },
   buttonText: {
     color: '#fff',
@@ -187,5 +225,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: 260,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    elevation: 10,
+  },
+  modalOption: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
