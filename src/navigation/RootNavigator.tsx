@@ -5,7 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import BottomTabNavigator from './BottomTabNavigator';
 import LoginScreen from '../modules/auth/screens/LoginScreen';
 import PostDetailScreen from '../modules/post/screens/PostDetailScreen';
-import CreatePostScreen from '../modules/post/screens/CreatePostScreen'
+import CreatePostScreen from '../modules/post/screens/CreatePostScreen';
+import CourseDetailScreen from '../modules/question/screens/CourseDetailScreen';
 import { useAuthStore } from '../modules/auth/store';
 
 export type RootStackParamList = {
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   MainApp: undefined;
   PostDetailScreen: undefined;
   CreatePostScreen: undefined;
+  CourseDetail: { courseId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,6 +32,7 @@ export default function RootNavigator() {
             <Stack.Screen name="MainApp" component={BottomTabNavigator} />
             <Stack.Screen name="PostDetailScreen" component={PostDetailScreen} />
             <Stack.Screen name="CreatePostScreen" component={CreatePostScreen} />
+            <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
           </>
         )}
       </Stack.Navigator>

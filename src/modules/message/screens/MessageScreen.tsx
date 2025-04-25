@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native'
 export default function PostScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>这是对战页面</Text>
+      <Text style={styles.text}>这是消息页面</Text>
     </View>
   )
 }
