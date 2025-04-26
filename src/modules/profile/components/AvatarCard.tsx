@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useProfileStore } from '../store';
 import defaultAvatar from '../../../../assets/default-avatar.png';
@@ -7,11 +14,12 @@ import { useAuthStore } from '../../auth/store';
 
 export default function AvatarCard() {
   const { user, setAvatar } = useProfileStore();
+  const token = useAuthStore((state) => state.token);
+
   const logout = () => {
     useAuthStore.getState().logout();
     useProfileStore.getState().resetProfile(); // ✅ 清空本地缓存的用户信息
   };
-  
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -29,17 +37,52 @@ export default function AvatarCard() {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const selectedUri = result.assets[0].uri;
-      setAvatar(selectedUri); // ✅ 更新 avatar_path 到 Zustand
+
+      try {
+        const formData = new FormData();
+
+        formData.append('avatar', {
+          uri: selectedUri,
+          type: 'image/jpeg',
+          name: 'avatar.jpg',
+        } as any); // React Native 类型系统需要断言为 any
+
+        const response = await fetch(`https://remote.xiaoen.xyz/api/v1/user/auth/upload_image`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+          body: formData,
+        });
+
+        const json = await response.json(); // ✅ 只读取一次
+
+        console.log('🔍 上传响应内容:', json);
+
+        if (json.code === 10000 && json.data?.url) {
+          // 拼接成完整url
+          const fullUrl = `https://remote.xiaoen.xyz/${json.data.url.replace('127.0.0.1:8080/', '')}`;
+          console.log('✅ 最终头像URL:', fullUrl);
+          setAvatar(fullUrl); // 更新到全局状态
+        } else {
+          Alert.alert('上传失败', json.msg || '请稍后再试');
+        }
+      } catch (error) {
+        console.error('上传头像出错:', error);
+        Alert.alert('上传失败', '上传过程中发生错误');
+      }
     }
   };
 
-  if (!user) return null; // 防止未登录时渲染
+  if (!user) return null;
+  console.log('🖼️ 当前头像地址:', user.avatar_path);
 
   return (
     <View style={styles.profileHeader}>
       <TouchableOpacity onPress={pickImage}>
         {user.avatar_path ? (
-          <Image source={{ uri: user.avatar_path }} style={styles.avatarImageLarge} />
+          <Image source={{ uri: user.avatar_path }} style={styles.avatarImageLarge} resizeMode="cover"/>
         ) : (
           <View style={styles.avatarPlaceholderLarge}>
             <Image source={defaultAvatar} style={styles.avatarImageLarge} />

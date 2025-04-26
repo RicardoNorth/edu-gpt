@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 
 interface PostCardProps {
   avatar: any;
@@ -21,7 +21,13 @@ export default function PostCard({
   onPress,
 }: PostCardProps) {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        { opacity: 1 }, // 始终不变色
+      ]}
+    >
       <Text style={styles.title}>{title}</Text>
       <View style={styles.header}>
         <Image source={avatar} style={styles.avatar} />
@@ -32,7 +38,7 @@ export default function PostCard({
         <Text style={styles.statText}>👍 {likes}</Text>
         <Text style={styles.statText}>⭐ {saves}</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

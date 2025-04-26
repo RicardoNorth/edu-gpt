@@ -4,7 +4,7 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -35,13 +35,12 @@ export default function PostListScreen() {
       <View style={styles.container}>
         {/* 搜索栏 + 发帖按钮 */}
         <View style={styles.searchRow}>
-          <TouchableOpacity
+          <Pressable
             style={styles.postButton}
             onPress={() => navigation.navigate('CreatePostScreen')}
           >
             <Text style={styles.postButtonText}>发帖</Text>
-          </TouchableOpacity>
-
+          </Pressable>
           <View style={styles.searchInput}>
             <AnimatedSearchBar value={searchText} onChangeText={setSearchText} />
           </View>
