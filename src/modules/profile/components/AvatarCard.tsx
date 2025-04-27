@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,82 +7,47 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useProfileStore } from '../store';
-import defaultAvatar from '../../../../assets/default-avatar.png';
 import { useAuthStore } from '../../auth/store';
+import defaultAvatar from '../../../../assets/default-avatar.png';
+import ImageViewing from 'react-native-image-viewing';
 
 export default function AvatarCard() {
-  const { user, setAvatar } = useProfileStore();
-  const token = useAuthStore((state) => state.token);
+  const { user } = useProfileStore();
+  const { logout } = useAuthStore();
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null); // ✨ 本地缓存 avatarUri
 
-  const logout = () => {
-    useAuthStore.getState().logout();
-    useProfileStore.getState().resetProfile(); // ✅ 清空本地缓存的用户信息
-  };
-
-  const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert('权限不足', '需要访问媒体库权限才能上传头像');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const selectedUri = result.assets[0].uri;
-
-      try {
-        const formData = new FormData();
-
-        formData.append('avatar', {
-          uri: selectedUri,
-          type: 'image/jpeg',
-          name: 'avatar.jpg',
-        } as any); // React Native 类型系统需要断言为 any
-
-        const response = await fetch(`https://remote.xiaoen.xyz/api/v1/user/auth/upload_image`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-          body: formData,
-        });
-
-        const json = await response.json(); // ✅ 只读取一次
-
-        console.log('🔍 上传响应内容:', json);
-
-        if (json.code === 10000 && json.data?.url) {
-          // 拼接成完整url
-          const fullUrl = `https://remote.xiaoen.xyz/${json.data.url.replace('127.0.0.1:8080/', '')}`;
-          console.log('✅ 最终头像URL:', fullUrl);
-          setAvatar(fullUrl); // 更新到全局状态
-        } else {
-          Alert.alert('上传失败', json.msg || '请稍后再试');
-        }
-      } catch (error) {
-        console.error('上传头像出错:', error);
-        Alert.alert('上传失败', '上传过程中发生错误');
+  useEffect(() => {
+    if (user?.avatar_path) {
+      if (user.avatar_path.startsWith('data:image')) {
+        setAvatarUri(user.avatar_path);
+      } else {
+        setAvatarUri(`${user.avatar_path}?t=${Date.now()}`); // 只在头像变化时加时间戳
       }
+    } else {
+      setAvatarUri(null);
     }
-  };
+  }, [user?.avatar_path]); // 监听头像变化
 
   if (!user) return null;
-  console.log('🖼️ 当前头像地址:', user.avatar_path);
 
   return (
     <View style={styles.profileHeader}>
-      <TouchableOpacity onPress={pickImage}>
-        {user.avatar_path ? (
-          <Image source={{ uri: user.avatar_path }} style={styles.avatarImageLarge} resizeMode="cover"/>
+      <TouchableOpacity
+        onPress={() => {
+          if (avatarUri) {
+            setIsViewerVisible(true);
+          } else {
+            Alert.alert('提示', '暂无头像可以预览');
+          }
+        }}
+      >
+        {avatarUri ? (
+          <Image
+            source={{ uri: avatarUri }}
+            style={styles.avatarImageLarge}
+          />
         ) : (
           <View style={styles.avatarPlaceholderLarge}>
             <Image source={defaultAvatar} style={styles.avatarImageLarge} />
@@ -97,6 +62,8 @@ export default function AvatarCard() {
             <Text style={styles.logout}>退出</Text>
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.signature}>{user.signature || '这个人很懒，什么都没写～'}</Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -113,6 +80,14 @@ export default function AvatarCard() {
           </View>
         </View>
       </View>
+
+      {/* 大图预览 */}
+      <ImageViewing
+        images={avatarUri ? [{ uri: avatarUri }] : []}
+        imageIndex={0}
+        visible={isViewerVisible}
+        onRequestClose={() => setIsViewerVisible(false)}
+      />
     </View>
   );
 }
@@ -153,6 +128,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2B333E',
     marginLeft: 15,
+  },
+  signature: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 15,
+    marginTop: 6,
   },
   infoRow: {
     flexDirection: 'row',

@@ -14,7 +14,8 @@ import PostScreen from '../modules/post/screens/PostScreen';
 import AnswerScreen from '../modules/answer/screens/AnswerScreen';
 import QuestionScreen from '../modules/question/screens/QuestionScreen';
 import MessageScreen from '../modules/message/screens/MessageScreen';
-import ProfileScreen from '../modules/profile/screens/ProfileScreen';
+import ProfileNavigator from '../modules/profile/navigation/ProfileNavigator';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import AnimatedTabBarButton from './components/AnimatedTabBarButton';
 
 const Tab = createBottomTabNavigator();
@@ -60,7 +61,15 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="秒答" component={AnswerScreen} />
       <Tab.Screen name="题库" component={QuestionScreen} />
       <Tab.Screen name="消息" component={MessageScreen} />
-      <Tab.Screen name="我的" component={ProfileScreen} />
+      <Tab.Screen name="我的" component={ProfileNavigator} 
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileMain';
+          if (routeName === 'EditProfile' || routeName === 'BrowseHistory') {
+            return {tabBarStyle: { display: 'none' },};
+          }
+          return {};
+        }}
+      />
     </Tab.Navigator>
   );
 }

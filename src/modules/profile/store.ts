@@ -16,6 +16,7 @@ export interface UserInfo {
   sex?: string;
   self_eval_level?: number;
   system_score?: number;
+  signature: string | null;
 }
 
 interface ProfileState {

@@ -15,11 +15,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
-import { usePostCardStore } from '../store/postCardStore';
+import { useAuthStore } from '../../auth/store'; 
+import { usePostCardStore } from '../store/postCardStore'; 
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const token = useAuthStore((state) => state.token);
   const addPost = usePostCardStore((state) => state.addPost);
 
   const [title, setTitle] = useState('');
@@ -60,26 +62,65 @@ export default function CreatePostScreen() {
     setModalVisible(false);
   };
 
-  const handleSubmit = () => {
-    if (!title || !content) {
+  const handleSubmit = async () => {
+    if (!title.trim() || !content.trim()) {
       Alert.alert('请输入标题和内容');
       return;
     }
 
-    const newPost = {
-      id: Date.now().toString(),
-      avatar: require('../../../../assets/default-avatar.png'),
-      nickname: '你自己',
-      title,
-      content,
-      preview: content.slice(0, 40) + (content.length > 40 ? '...' : ''),
-      image: images,
-      likes: 0,
-      saves: 0,
-    };
+    if (!token) {
+      Alert.alert('请先登录');
+      return;
+    }
 
-    addPost(newPost);
-    navigation.goBack();
+    try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('content', content);
+      formData.append('image_count', images.length.toString());
+
+      images.forEach((uri, index) => {
+        formData.append('postimage', {
+          uri,
+          type: 'image/jpeg',
+          name: `image_${index}.jpg`,
+        } as any);
+      });
+
+      const response = await fetch('https://remote.xiaoen.xyz/api/v1/post/auth/create', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const resJson = await response.json();
+
+      if (resJson.code === 10000) {
+        const newPost = {
+          id: resJson.data.id.toString(),
+          avatar: require('../../../../assets/default-avatar.png'),
+          nickname: '你自己',
+          title,
+          content,
+          preview: content.slice(0, 40) + (content.length > 40 ? '...' : ''),
+          image: images,
+          likes: 0,
+          saves: 0,
+        };
+        addPost(newPost);
+
+        Alert.alert('发布成功');
+        navigation.goBack();
+      } else {
+        Alert.alert('发布失败', resJson.msg || '请稍后再试');
+      }
+    } catch (error) {
+      console.error('发帖请求失败', error);
+      Alert.alert('网络异常', '请检查网络连接');
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -7,7 +7,7 @@ import {
   Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useHideTabBarOnKeyboard } from '../../../hooks/useHideTabBarOnKeyboard';
@@ -26,8 +26,19 @@ export default function PostListScreen() {
   const setCurrentPost = usePostDetailStore((state) => state.setCurrentPost);
   const [searchText, setSearchText] = useState('');
 
+  const flatListRef = useRef<FlatList>(null); // ✅ 新增：FlatList的ref
+
   const filteredPosts = posts.filter((post) =>
     post.title.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  // ✅ 当页面重新focus时，比如从发帖页返回，自动滚到列表最顶
+  useFocusEffect(
+    React.useCallback(() => {
+      if (flatListRef.current && posts.length > 0) {
+        flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+      }
+    }, [posts])
   );
 
   return (
@@ -48,8 +59,10 @@ export default function PostListScreen() {
 
         {/* 帖子列表 */}
         <FlatList
+          ref={flatListRef} // ✅ 绑定ref
           data={filteredPosts}
-          keyExtractor={(item) => item.id}
+          extraData={posts}
+          keyExtractor={(item, index) => `${item.id}-${index}`} // ✅ 保证 key 不冲突
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
             <PostCard

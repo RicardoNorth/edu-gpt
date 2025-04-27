@@ -5,6 +5,7 @@ import { useProfileStore } from '../../profile/store';
 import { login } from '../api';
 import { getUserInfo } from '../../profile/api';
 import { mergeUserInfo } from '../../../utils/user';
+import { fetchAvatarUrl } from '../../profile/api/fetchAvatarUrl';
 
 export default function LoginScreen() {
   const [studentId, setStudentId] = useState('');
@@ -16,7 +17,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setError('');
-
+  
     if (!/^\d{6,20}$/.test(studentId)) {
       setError('学号格式错误');
       return;
@@ -25,18 +26,19 @@ export default function LoginScreen() {
       setError('密码长度不能少于6位');
       return;
     }
-
+  
     try {
       const res = await login(studentId, password);
       if (res.code === 10000) {
         const token = res.data.token;
-        setToken(token); // ✅ 全局存储 token
-
+        setToken(token); // 全局存储 token
+  
         const userInfoRes = await getUserInfo();
         if (userInfoRes.code === 10000) {
           const localUser = useProfileStore.getState().user;
           const mergedUser = mergeUserInfo(userInfoRes.data, localUser);
           setUser(mergedUser);
+          await fetchAvatarUrl(); // 登录后立刻拉取头像
           setIsLoggedIn();
         } else {
           setError('获取用户信息失败');

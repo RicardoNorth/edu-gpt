@@ -21,7 +21,7 @@ const mockCourseDetail = {
   title: '电子商务概论',
   author: '管理学院',
   tags: ['互联网', '金融', '计算机'],
-  image: require('../../../../assets/course-cover.jpg'),
+  image: require('../store/images/1.png'),
   students: 128000,
   likes: 4300,
   comments: 1200,
@@ -32,7 +32,7 @@ const mockCourseDetail = {
     {
       user: '人生海海',
       content:
-        '古人言“撑死胆大的，饿死胆小的。”我们向来鄙视胆小者。可凭心而论，我们是为什么变得胆小的？因为我们在意他人的情绪……',
+        '好课，好题',
       likes: 3677,
       comments: 180,
     },

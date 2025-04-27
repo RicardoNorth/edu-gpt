@@ -15,6 +15,7 @@ export type RootStackParamList = {
   PostDetailScreen: undefined;
   CreatePostScreen: undefined;
   CourseDetail: { courseId: string };
+  AvatarPreview: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
