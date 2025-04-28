@@ -12,7 +12,7 @@ export const fetchAvatarUrl = async () => {
   }
 
   try {
-    const response = await fetch(`https://remote.xiaoen.xyz/api/v1/user/auth/imageurl/${user.id}`, {
+    const response = await fetch(`https://remote.xiaoen.xyz/api/v1/user/auth/avatar/${user.id}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

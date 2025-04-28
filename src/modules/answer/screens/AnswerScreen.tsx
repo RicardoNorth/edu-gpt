@@ -11,8 +11,11 @@ import {
   Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { Pencil } from 'lucide-react-native';
 import MessageItem from '../components/MessageItem';
 import { askAI } from '../api/answerApi';
+import { usePromptStore } from '../store/promptStore'; // 引入 store 拿 aiName
 
 interface Message {
   id: string;
@@ -27,6 +30,8 @@ export default function AnswerScreen() {
   const [inputText, setInputText] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const navigation = useNavigation<any>();
+  const { aiName } = usePromptStore(); // 拿ai名称
 
   const showTypingEffect = (fullText: string, targetId: string) => {
     let index = 0;
@@ -64,7 +69,6 @@ export default function AnswerScreen() {
         clearInterval(typing);
         clearInterval(cursorInterval);
   
-        // 最后打完后，去掉光标
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === targetId
@@ -89,7 +93,6 @@ export default function AnswerScreen() {
     setInputText('');
     Keyboard.dismiss();
   
-    // 插入一个 "..." 动画气泡
     const loadingMessageId = (Date.now() + 1).toString();
     const loadingStages = ['.', '..', '...'];
     let stageIndex = 0;
@@ -114,11 +117,11 @@ export default function AnswerScreen() {
     try {
       const aiReplyText = await askAI(userMessage.content);
   
-      clearInterval(loadingInterval); // 停止"..."动画
+      clearInterval(loadingInterval);
   
       showTypingEffect(aiReplyText, loadingMessageId);
     } catch (error) {
-      clearInterval(loadingInterval); // 出错时也要停止"..."动画
+      clearInterval(loadingInterval);
   
       setMessages((prev) =>
         prev.map((msg) =>
@@ -132,6 +135,15 @@ export default function AnswerScreen() {
   
   return (
     <SafeAreaView style={styles.container}>
+      {/* 顶栏 */}
+      <View style={styles.header}>
+        <Text style={styles.aiName}>{aiName}</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('EditAIScreen')}>
+          <Pencil size={20} color="#333" />
+        </TouchableOpacity>
+      </View>
+
+      {/* 聊天消息区 */}
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -141,23 +153,24 @@ export default function AnswerScreen() {
         bounces={true}
       />
 
+      {/* 输入框 */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={80}
       >
         <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="请输入你的问题..."
-          placeholderTextColor="#9aa9bf"
-          value={inputText}
-          onChangeText={setInputText}
-          onFocus={() => setIsInputFocused(true)}
-          onBlur={() => setIsInputFocused(false)}
-          onSubmitEditing={handleSend}
-          blurOnSubmit={false}
-          multiline
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="请输入你的问题..."
+            placeholderTextColor="#9aa9bf"
+            value={inputText}
+            onChangeText={setInputText}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
+            onSubmitEditing={handleSend}
+            blurOnSubmit={false}
+            multiline
+          />
           <TouchableOpacity
             style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
             onPress={handleSend}
@@ -175,6 +188,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    paddingTop: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomColor: '#eee',
+    borderBottomWidth: 1,
+  },
+  aiName: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   chatContainer: {
     padding: 12,

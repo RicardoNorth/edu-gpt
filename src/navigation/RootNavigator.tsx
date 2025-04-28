@@ -7,6 +7,7 @@ import LoginScreen from '../modules/auth/screens/LoginScreen';
 import PostDetailScreen from '../modules/post/screens/PostDetailScreen';
 import CreatePostScreen from '../modules/post/screens/CreatePostScreen';
 import CourseDetailScreen from '../modules/question/screens/CourseDetailScreen';
+import EditAIScreen from '../modules/answer/screens/EditAIScreen';
 import { useAuthStore } from '../modules/auth/store';
 
 export type RootStackParamList = {
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   CreatePostScreen: undefined;
   CourseDetail: { courseId: string };
   AvatarPreview: undefined;
+  EditAIScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,6 +36,7 @@ export default function RootNavigator() {
             <Stack.Screen name="PostDetailScreen" component={PostDetailScreen} />
             <Stack.Screen name="CreatePostScreen" component={CreatePostScreen} />
             <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
+            <Stack.Screen name="EditAIScreen" component={EditAIScreen} />
           </>
         )}
       </Stack.Navigator>
