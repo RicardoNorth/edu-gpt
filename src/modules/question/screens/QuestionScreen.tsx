@@ -23,7 +23,7 @@ const mockCourses = [
     college: '管理学院',
     type: '专业必修课',
     tags: ['互联网', '金融', '计算机'],
-    image: require('../store/images/1.png'), // 换成你本地的图
+    image: require('../store/images/1.png'),
     students: 128,
     likes: 43,
     comments: 12,

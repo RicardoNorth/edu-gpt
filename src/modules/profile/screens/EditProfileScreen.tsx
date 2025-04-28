@@ -63,14 +63,12 @@ export default function EditProfileScreen() {
       });
   
       const uploadJson = await uploadResponse.json();
-      console.log('🔍 头像上传返回:', uploadJson);
   
       if (uploadJson.code !== 10000 || !uploadJson.data?.url) {
         throw new Error(uploadJson.msg || '头像上传失败');
       }
   
       const imgUrl = uploadJson.data.url;
-      console.log('📸 拉取图片 URL:', imgUrl);
   
       const avatarResponse = await fetch(imgUrl, {
         method: 'POST',
@@ -96,7 +94,6 @@ export default function EditProfileScreen() {
         reader.readAsDataURL(avatarBlob);
       });
   
-      console.log('✅ 成功转换为 Base64');
       return base64String;
   
     } catch (error) {

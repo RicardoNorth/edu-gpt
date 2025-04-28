@@ -13,11 +13,11 @@ import { useAuthStore } from '../modules/auth/store';
 export type RootStackParamList = {
   Login: undefined;
   MainApp: undefined;
-  PostDetailScreen: undefined;
   CreatePostScreen: undefined;
   CourseDetail: { courseId: string };
   AvatarPreview: undefined;
   EditAIScreen: undefined;
+  PostDetailScreen: { id: number };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

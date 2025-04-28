@@ -47,7 +47,7 @@ export default function CourseDetailScreen() {
 
   return (
     <LinearGradient
-      colors={['#c4d7d6', 'white']} // 从灰到白
+      colors={['#c4d7d6', 'white']}
       style={{ flex: 1 }}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -103,6 +103,14 @@ export default function CourseDetailScreen() {
             <View style={styles.ratingBar}>
               <View style={[styles.ratingFill, { width: `${mockCourseDetail.rating}%` }]} />
             </View>
+            <View style={styles.bottomButtonRow}>
+            {/* <TouchableOpacity style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>加入题库</Text>
+            </TouchableOpacity> */}
+            <TouchableOpacity style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>开始做题</Text>
+            </TouchableOpacity>
+          </View>
             <View style={styles.tagRow}>
               {['值得一学', '通俗易懂', '适合新手'].map((tag, i) => (
                 <View key={i} style={styles.ratingTag}>
@@ -123,14 +131,7 @@ export default function CourseDetailScreen() {
             </View>
           ))}
 
-          <View style={styles.bottomButtonRow}>
-            <TouchableOpacity style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>加入题库</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>开始做题</Text>
-            </TouchableOpacity>
-          </View>
+          
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
