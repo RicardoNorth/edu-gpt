@@ -28,8 +28,6 @@ export const fetchAvatarUrl = async () => {
       // 🛠️ 关键修正：
       base64data = base64data.replace('application/octet-stream', 'image/jpeg');
 
-      console.log('✅ 修正后的Base64:', base64data);
-
       useProfileStore.getState().setAvatar(base64data);
     };
     reader.readAsDataURL(blob);
