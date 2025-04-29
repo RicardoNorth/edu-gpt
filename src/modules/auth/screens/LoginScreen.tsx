@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'; // 注意引入ActivityIndicator
 import { useAuthStore } from '../store';
 import { useProfileStore } from '../../profile/store';
 import { login } from '../api';
@@ -11,34 +11,38 @@ export default function LoginScreen() {
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // <-- 加了 loading 状态
 
   const { login: setIsLoggedIn, setToken } = useAuthStore();
   const setUser = useProfileStore((state) => state.setUser);
 
   const handleLogin = async () => {
     setError('');
-  
+    setLoading(true); // <-- 开始登录，设为 true
+
     if (!/^\d{6,20}$/.test(studentId)) {
       setError('学号格式错误');
+      setLoading(false); // 校验失败也要停掉 loading
       return;
     }
     if (password.length < 6) {
       setError('密码长度不能少于6位');
+      setLoading(false);
       return;
     }
-  
+
     try {
       const res = await login(studentId, password);
       if (res.code === 10000) {
         const token = res.data.token;
-        setToken(token); // 全局存储 token
-  
+        setToken(token);
+
         const userInfoRes = await getUserInfo();
         if (userInfoRes.code === 10000) {
           const localUser = useProfileStore.getState().user;
           const mergedUser = mergeUserInfo(userInfoRes.data, localUser);
           setUser(mergedUser);
-          await fetchAvatarUrl(); // 登录后立刻拉取头像
+          await fetchAvatarUrl();
           setIsLoggedIn();
         } else {
           setError('获取用户信息失败');
@@ -53,17 +57,39 @@ export default function LoginScreen() {
     } catch (err) {
       console.error(err);
       setError('网络异常');
+    } finally {
+      setLoading(false); // <-- 不管成功还是失败，最后都要关闭 loading
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>登录</Text>
-      <TextInput style={styles.input} placeholder="学号" keyboardType="numeric" value={studentId} onChangeText={setStudentId} />
-      <TextInput style={styles.input} placeholder="密码" secureTextEntry value={password} onChangeText={setPassword} />
+      <Text style={styles.title}>麻烦登录一下信息门户</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="学号"
+        keyboardType="numeric"
+        value={studentId}
+        onChangeText={setStudentId}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="密码"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
       {error !== '' && <Text style={styles.error}>{error}</Text>}
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>登录</Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleLogin}
+        disabled={loading} // 防止连续点
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>登录</Text>
+        )}
       </TouchableOpacity>
     </View>
   );

@@ -102,11 +102,6 @@ export default function EditProfileScreen() {
     }
   };
   
-  
-  
-  
-  
-
   const handleSave = async () => {
     if (!user) return;
 

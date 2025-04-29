@@ -63,7 +63,7 @@ export default function CourseDetailScreen() {
 
         <ScrollView
           style={styles.container}
-          contentContainerStyle={{ paddingTop: insets.top + 6 }}
+          contentContainerStyle={{ paddingTop: insets.top }}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.topRow}>
