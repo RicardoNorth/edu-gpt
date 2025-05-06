@@ -67,7 +67,6 @@ export default function PostListScreen() {
       });
 
       const resJson = await response.json();
-      console.log('拉取帖子返回', resJson);
 
       if (resJson.code === 10000) {
         const fetchedPosts = resJson.data || [];

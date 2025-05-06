@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Post } from '../../../types/post'; // ✅ 按你的项目结构调整路径
+import { Post } from '../../../types/post';
 
 interface PostCardStore {
   posts: Post[];
