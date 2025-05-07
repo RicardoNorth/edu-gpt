@@ -1,5 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import type { FlatList as FlatListType } from 'react-native';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   View,
   FlatList,
@@ -10,11 +14,18 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import type { FlatList as FlatListType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { BottomTabParamList } from '../../../types/nav';
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from '@react-navigation/native';
+import type {
+  NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 
 import { usePostDetailStore } from '../store/postDetailStore';
 import { useAuthStore } from '../../auth/store';
@@ -41,8 +52,8 @@ export default function PostListScreen() {
   useHideTabBarOnKeyboard();
   const navigation = useNavigation<Navigation>();
   const route = useRoute();
-  const token = useAuthStore((state) => state.token);
-  const setCurrentPost = usePostDetailStore((state) => state.setCurrentPost);
+  const token = useAuthStore((s) => s.token);
+
   const flatListRef = useRef<FlatListType>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -52,96 +63,102 @@ export default function PostListScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [searchText, setSearchText] = useState('');
 
+  /** 拉列表 */
   const fetchPosts = async (isRefresh = false) => {
-    if (!token) return;
-    if (loading) return;
+    if (!token || loading) return;
     setLoading(true);
-
     try {
-      const response = await fetch('https://remote.xiaoen.xyz/api/v1/post/auth/list', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          last_pid: isRefresh ? 0 : lastPid,
-          size: 5,
-        }),
-      });
-
-      const resJson = await response.json();
-      console.log('列表接口 raw data →', resJson);
-
-      if (resJson.code === 10000) {
-        const fetchedPosts = resJson.data || [];
-
-        if (isRefresh) {
-          setPosts(fetchedPosts);
-        } else {
-          setPosts((prev) => [...prev, ...fetchedPosts]);
+      const res = await fetch(
+        'https://remote.xiaoen.xyz/api/v1/post/auth/list',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            last_pid: isRefresh ? 0 : lastPid,
+            size: 5,
+          }),
         }
-
-        if (fetchedPosts.length > 0) {
-          setLastPid(fetchedPosts[fetchedPosts.length - 1].id);
-        }
-
-        setHasMore(fetchedPosts.length >= 5);
+      );
+      const json = await res.json();
+      if (json.code === 10000) {
+        const list: Post[] = json.data ?? [];
+        setPosts((prev) =>
+          isRefresh ? list : [...prev, ...list]
+        );
+        if (list.length) setLastPid(list[list.length - 1].id);
+        setHasMore(list.length >= 5);
       } else {
-        Alert.alert('拉取失败', resJson.msg || '请稍后再试');
+        Alert.alert('拉取失败', json.msg || '请稍后再试');
       }
-    } catch (error) {
-      console.error('帖子列表请求失败', error);
+    } catch (e) {
+      console.error('帖子列表请求失败', e);
     } finally {
       setLoading(false);
       if (isRefresh) setRefreshing(false);
     }
   };
 
+  /** 首次进入根据 token 拉一次 */
   useEffect(() => {
     fetchPosts(true);
   }, [token]);
 
+  /** 下拉刷新 */
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     setLastPid(0);
     fetchPosts(true);
   }, []);
 
+  /** 点击同 Tab 图标：只滚顶 */
+  // @ts-ignore Stack 类型无 tabPress，但运行时可冒泡
   useEffect(() => {
-    // @ts-ignore  // Stack NavigationProp 类型里没有 tabPress，但运行时事件会冒泡
-    const unsub = navigation.addListener('tabPress', () => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true }); // 若想先滚顶
-      handleRefresh();
-    });
+    const tabNav = navigation
+    .getParent() // PostStack
+    ?.getParent<BottomTabNavigationProp<BottomTabParamList>>(); // BottomTab
+
+    const unsub = tabNav?.addListener('tabPress', () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  });
     return unsub;
-  }, [navigation, handleRefresh]);
+  }, [navigation]);
 
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchPosts(false);
-    }
-  };
-
-  // 如果发完帖子回来，刷新一次
-  useEffect(() => {
-    if ((route.params as any)?.refresh) {
-      handleRefresh();
-    }
-  }, [route.params]);
-
-  const filteredPosts = posts.filter((post) =>
-    post.title.toLowerCase().includes(searchText.toLowerCase())
+  /** 每次页面重新聚焦：滚顶 + 刷新一次 */
+  useFocusEffect(
+    useCallback(() => {
+      flatListRef.current?.scrollToOffset({
+        offset: 0,
+        animated: false,
+      });
+      fetchPosts(true);
+    }, [token])
   );
 
-  const handlePostPress = (postId: number) => {
-    navigation.navigate('PostDetailScreen', { id: postId }); 
+  /** 分页 */
+  const handleLoadMore = () => {
+    if (!loading && hasMore) fetchPosts(false);
   };
+
+  /** 發帖后 route.params?.refresh 也可触发手动刷新 */
+  useEffect(() => {
+    if ((route.params as any)?.refresh) handleRefresh();
+  }, [route.params]);
+
+  /** 搜索过滤 */
+  const filtered = posts.filter((p) =>
+    p.title.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const handlePostPress = (id: number) =>
+    navigation.navigate('PostDetailScreen', { id });
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* 搜索栏 + 发帖按钮 */}
+        {/* 顶栏 */}
         <View style={styles.searchRow}>
           <Pressable
             style={styles.postButton}
@@ -150,20 +167,23 @@ export default function PostListScreen() {
             <Text style={styles.postButtonText}>发帖</Text>
           </Pressable>
           <View style={styles.searchInput}>
-            <AnimatedSearchBar value={searchText} onChangeText={setSearchText} />
+            <AnimatedSearchBar
+              value={searchText}
+              onChangeText={setSearchText}
+            />
           </View>
         </View>
 
-        {/* 帖子列表 */}
+        {/* 列表 */}
         <FlatList
-           ref={flatListRef}
-          data={filteredPosts}
-          keyExtractor={(item) => item.id.toString()}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ref={flatListRef}
+          data={filtered}
+          keyExtractor={(i) => i.id.toString()}
+          ItemSeparatorComponent={() => (
+            <View style={styles.separator} />
+          )}
           renderItem={({ item }) => {
-            const formattedContent = item.content.replace(/\n/g, '\\n');
-            const preview = formattedContent.split('\\n')[0]; // 只取第一行作为 preview
-
+            const preview = item.content.split('\n')[0];
             return (
               <PostCard
                 avatar={require('../../../../assets/default-avatar.png')}
@@ -177,7 +197,10 @@ export default function PostListScreen() {
             );
           }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+            />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.2}
@@ -185,7 +208,13 @@ export default function PostListScreen() {
             loading ? (
               <ActivityIndicator style={{ marginVertical: 16 }} />
             ) : !hasMore ? (
-              <Text style={{ textAlign: 'center', color: '#aaa', marginVertical: 16 }}>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  color: '#aaa',
+                  marginVertical: 16,
+                }}
+              >
                 已经到底了
               </Text>
             ) : null
@@ -198,25 +227,14 @@ export default function PostListScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-  },
+  safeArea: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, paddingHorizontal: 12, paddingTop: 12 },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  searchInput: {
-    flex: 1,
-    marginRight: 8,
-    marginLeft: 8,
-  },
+  searchInput: { flex: 1, marginRight: 8, marginLeft: 8 },
   postButton: {
     backgroundColor: '#007BFF',
     paddingHorizontal: 16,
@@ -233,8 +251,5 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#eee',
-  },
+  separator: { height: 1, backgroundColor: '#eee' },
 });
