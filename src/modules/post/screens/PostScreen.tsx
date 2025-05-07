@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import type { FlatList as FlatListType } from 'react-native';
 import {
   View,
   FlatList,
@@ -11,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { usePostDetailStore } from '../store/postDetailStore';
@@ -40,6 +43,7 @@ export default function PostListScreen() {
   const route = useRoute();
   const token = useAuthStore((state) => state.token);
   const setCurrentPost = usePostDetailStore((state) => state.setCurrentPost);
+  const flatListRef = useRef<FlatListType>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,6 +71,7 @@ export default function PostListScreen() {
       });
 
       const resJson = await response.json();
+      console.log('列表接口 raw data →', resJson);
 
       if (resJson.code === 10000) {
         const fetchedPosts = resJson.data || [];
@@ -102,6 +107,15 @@ export default function PostListScreen() {
     setLastPid(0);
     fetchPosts(true);
   }, []);
+
+  useEffect(() => {
+    // @ts-ignore  // Stack NavigationProp 类型里没有 tabPress，但运行时事件会冒泡
+    const unsub = navigation.addListener('tabPress', () => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true }); // 若想先滚顶
+      handleRefresh();
+    });
+    return unsub;
+  }, [navigation, handleRefresh]);
 
   const handleLoadMore = () => {
     if (!loading && hasMore) {
@@ -142,6 +156,7 @@ export default function PostListScreen() {
 
         {/* 帖子列表 */}
         <FlatList
+           ref={flatListRef}
           data={filteredPosts}
           keyExtractor={(item) => item.id.toString()}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

@@ -41,7 +41,6 @@ export default function PostDetailScreen() {
       });
 
       const json = await res.json();
-      console.log('帖子详情返回：', json);
 
       if (json.code === 10000) {
         const data = json.data;
