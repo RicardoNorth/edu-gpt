@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, Text, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Pressable, StyleSheet, Text, Alert, Animated } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuthStore } from '../../auth/store';
-import { useEffect } from 'react';
 
 interface Props {
   postId: number;
@@ -15,9 +14,20 @@ export default function BottomActionBar({ postId, initialLiked, onLikeStatusChan
   const [liked, setLiked] = useState(initialLiked);
   const [loading, setLoading] = useState(false);
 
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     setLiked(initialLiked);
   }, [initialLiked]);
+
+  const triggerLikeAnimation = () => {
+    scaleAnim.setValue(1.2);
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 4,
+    }).start();
+  };
 
   const toggleLike = async () => {
     if (!token || loading) return;
@@ -41,11 +51,14 @@ export default function BottomActionBar({ postId, initialLiked, onLikeStatusChan
       if (json.code === 10000) {
         setLiked((prev) => {
           const newStatus = !prev;
-      
+
+          // 播放动画
+          triggerLikeAnimation();
+
           setTimeout(() => {
             onLikeStatusChange?.(newStatus);
           }, 0);
-      
+
           return newStatus;
         });
       } else {
@@ -61,11 +74,7 @@ export default function BottomActionBar({ postId, initialLiked, onLikeStatusChan
 
   return (
     <View style={styles.bar}>
-      <Pressable onPress={toggleLike} style={styles.button}>
-        <Ionicons name={liked ? 'heart' : 'heart-outline'} size={24} color={liked ? '#ff4d4f' : '#555'} />
-        <Text style={styles.label}>点赞</Text>
-      </Pressable>
-
+      
       <Pressable style={styles.button}>
         <Ionicons name="bookmark-outline" size={24} color="#555" />
         <Text style={styles.label}>收藏</Text>
@@ -74,6 +83,17 @@ export default function BottomActionBar({ postId, initialLiked, onLikeStatusChan
       <Pressable style={styles.button}>
         <Ionicons name="chatbubble-outline" size={24} color="#555" />
         <Text style={styles.label}>评论</Text>
+      </Pressable>
+
+      <Pressable onPress={toggleLike} style={styles.button}>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <Ionicons
+            name={liked ? 'heart' : 'heart-outline'}
+            size={24}
+            color={liked ? '#ff4d4f' : '#555'}
+          />
+        </Animated.View>
+        <Text style={styles.label}>点赞</Text>
       </Pressable>
 
       <Pressable style={styles.button}>
