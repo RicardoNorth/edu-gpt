@@ -186,7 +186,8 @@ export default function PostListScreen() {
             const preview = item.content.split('\n')[0];
             return (
               <PostCard
-                avatar={require('../../../../assets/default-avatar.png')}
+                avatarUrl={item.avatar_url}
+                token={token || null}
                 nickname={item.poster_nickname}
                 title={item.title}
                 preview={preview}

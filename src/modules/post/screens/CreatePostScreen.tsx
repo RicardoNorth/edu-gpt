@@ -100,7 +100,6 @@ export default function CreatePostScreen() {
       });
 
       const resJson = await response.json();
-      console.log('发帖返回：', resJson);
 
       if (resJson.code === 10000) {
         Alert.alert('发布成功');

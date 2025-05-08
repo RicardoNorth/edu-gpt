@@ -4,39 +4,54 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
-  FlatList,
-  Pressable,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';import ImageViewing from 'react-native-image-viewing';
+import ImageViewing from 'react-native-image-viewing';
+import { useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../auth/store';
 
-const screenWidth = Dimensions.get('window').width;
+import PostHeader from '../components/PostHeader';
+import PostCarousel from '../components/PostCarousel';
+import PostContent from '../components/PostContent';
+import BottomActionBar from '../components/BottomActionBar';
 
 export default function PostDetailScreen() {
-  const navigation = useNavigation();
   const route = useRoute();
   const { id } = route.params as { id: number };
 
-  const token = useAuthStore((s) => s.token);                 // ← 复用多次
+  const token = useAuthStore((s) => s.token);
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const [base64Images, setBase64Images] = useState<string[]>([]);
 
-  /** 拉取帖子详情 */
+  const fetchBlobAndConvertToBase64 = async (url: string, token: string) => {
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const blob = await res.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.error('图片加载失败', err);
+      return null;
+    }
+  };
+
   const fetchPostDetail = async () => {
     try {
       if (!token) return;
 
       const res = await fetch(`https://remote.xiaoen.xyz/api/v1/post/auth/${id}`, {
-        method: 'POST',                              // 详情接口仍是 POST
+        method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -44,8 +59,18 @@ export default function PostDetailScreen() {
 
       if (json.code === 10000) {
         const data = json.data;
-        data.content = data.content.replace(/\\n/g, '\n'); // 还原换行
+        console.log('📦 帖子详情接口返回数据:', data);
+        data.content = data.content.replace(/\\n/g, '\n');
         setPost(data);
+
+        if (data.image_urls?.length > 0) {
+          const results = await Promise.all(
+            data.image_urls.map((url: string) =>
+              fetchBlobAndConvertToBase64(url, token)
+            )
+          );
+          setBase64Images(results.filter(Boolean) as string[]);
+        }
       } else {
         Alert.alert('获取详情失败', json.msg || '请稍后再试');
       }
@@ -60,10 +85,6 @@ export default function PostDetailScreen() {
     fetchPostDetail();
   }, [id]);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) setCurrentIndex(viewableItems[0].index);
-  }).current;
-
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -71,6 +92,7 @@ export default function PostDetailScreen() {
       </View>
     );
   }
+
   if (!post) {
     return (
       <View style={styles.centered}>
@@ -79,90 +101,60 @@ export default function PostDetailScreen() {
     );
   }
 
-  /** 供 ImageViewing 使用的图片数组，携带 headers */
-  const viewingImages = (post.image_urls || []).map((url: string) => ({
-    uri: url,
-    headers: { Authorization: `Bearer ${token}` },
-  }));
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* 顶部栏 */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </Pressable>
+      <PostHeader
+        nickname={post.poster_nickname}
+        avatarUrl={post.avatar_url}
+        token={token!}
+      />
 
-        <Image
-          source={require('../../../../assets/default-avatar.png')}
-          style={styles.headerAvatar}
-        />
-        <Text style={styles.headerNickname} numberOfLines={1}>
-          {post.poster_nickname}
-        </Text>
-
-        <Pressable style={styles.headerFollowButton}>
-          <Text style={styles.headerFollowText}>关注</Text>
-        </Pressable>
-      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* 图片轮播 */}
-        {post.image_urls && post.image_urls.length > 0 && (
-          <View style={styles.carouselWrapper}>
-            <FlatList
-              ref={flatListRef}
-              data={post.image_urls}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(_, idx) => idx.toString()}
-              renderItem={({ item, index }) => (
-                <Pressable
-                  style={styles.carouselImageWrapper}
-                  android_ripple={{ color: 'transparent' }}
-                  onPress={() => {
-                    setCurrentIndex(index);
-                    setViewerVisible(true);
-                  }}
-                >
-                  <Image
-                    source={{ uri: item, headers: { Authorization: `Bearer ${token}` } }}
-                    style={styles.carouselImage}
-                    contentFit="cover"
-                  />
-                </Pressable>
-              )}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+        {post.image_urls?.length > 0 && (
+          <>
+            <PostCarousel
+              imageUrls={post.image_urls}
+              token={token!}
+              onImagePress={(index) => {
+                setCurrentIndex(index);
+                setViewerVisible(true);
+              }}
+              onVisibleIndexChange={(index) => setCurrentIndex(index)}
             />
-
             <View style={styles.pageIndicator}>
               <Text style={styles.pageText}>
                 {currentIndex + 1}/{post.image_urls.length}
               </Text>
             </View>
-          </View>
+          </>
         )}
 
-        {/* 正文 */}
-        <View style={styles.contentContainer}>
-          <Text style={styles.title}>{post.title}</Text>
-          <Text style={styles.content}>{post.content}</Text>
-          <Text style={styles.tags}>#{post.poster_department} #{post.poster_campus}</Text>
-          <Text style={styles.date}>{new Date(post.create_at).toLocaleDateString()}</Text>
-        </View>
+        <PostContent
+          title={post.title}
+          content={post.content}
+          department={post.poster_department}
+          campus={post.poster_campus}
+          createdAt={post.create_at}
+        />
       </ScrollView>
 
-      {/* 全屏预览；用 Image 渲染 */} 
       <ImageViewing
-        images={viewingImages}
+        images={base64Images.map((uri) => ({ uri }))}
         imageIndex={currentIndex}
         visible={viewerVisible}
         onRequestClose={() => setViewerVisible(false)}
         swipeToCloseEnabled
         doubleTapToZoomEnabled
-        ImageComponent={Image as any}
+      />
+
+      <BottomActionBar
+        key={`like-bar-${post.is_liked}`}
+        postId={post.id}
+        initialLiked={post.is_liked === 1}
+        onLikeStatusChange={(status) =>
+          setPost((prev: any) => ({ ...prev, is_liked: status ? 1 : 0 }))
+        }
       />
     </SafeAreaView>
   );
@@ -170,31 +162,6 @@ export default function PostDetailScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  backButton: { paddingRight: 8, paddingVertical: 4 },
-  headerAvatar: { width: 36, height: 36, borderRadius: 18, marginRight: 8 },
-  headerNickname: { flex: 1, fontSize: 15, fontWeight: '500', color: '#333' },
-  headerFollowButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#ff4d4f',
-  },
-  headerFollowText: { fontSize: 13, color: '#ff4d4f', fontWeight: '500' },
-
-  carouselWrapper: { width: screenWidth, height: screenWidth * 1.2, position: 'relative' },
-  carouselImageWrapper: { width: screenWidth, height: screenWidth * 1.2 },
-  carouselImage: { width: '100%', height: '100%' },
-
   pageIndicator: {
     position: 'absolute',
     bottom: 12,
@@ -205,12 +172,5 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   pageText: { color: '#fff', fontSize: 13 },
-
-  contentContainer: { paddingHorizontal: 16, paddingBottom: 32 },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#2B333E', marginVertical: 12 },
-  content: { fontSize: 16, lineHeight: 26, color: '#444', marginBottom: 16 },
-  tags: { color: '#007aff', fontSize: 14, marginBottom: 12 },
-  date: { fontSize: 12, color: '#aaa' },
-
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
