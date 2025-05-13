@@ -64,7 +64,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>麻烦登录一下信息门户</Text>
+      <Text style={styles.title}>信息门户，登录一下</Text>
       <TextInput
         style={styles.input}
         placeholder="学号"

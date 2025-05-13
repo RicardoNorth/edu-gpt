@@ -216,7 +216,7 @@ export default function PostListScreen() {
                   marginVertical: 16,
                 }}
               >
-                已经到底了
+                已经到底啦~
               </Text>
             ) : null
           }

@@ -7,16 +7,17 @@ import {
   ScanFace,
   Telescope,
 } from 'lucide-react-native';
+import {Ranking} from 'phosphor-react-native';
 import { useEffect, useState } from 'react';
 import { Keyboard } from 'react-native';
 
 import PostScreen from '../modules/post/screens/PostScreen';
 import AnswerScreen from '../modules/answer/screens/AnswerScreen';
 import QuestionScreen from '../modules/question/screens/QuestionScreen';
-import MessageScreen from '../modules/message/screens/MessageScreen';
 import ProfileNavigator from '../modules/profile/navigation/ProfileNavigator';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import AnimatedTabBarButton from './components/AnimatedTabBarButton';
+import RankScreen from '../modules/rank/screens/RankScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -46,8 +47,8 @@ export default function BottomTabNavigator() {
               return <Bot color={color} size={size} />;
             case '题库':
               return <FileQuestion size={size} color={color} />;
-            case '消息':
-              return <MessageCircle size={size} color={color} />;
+            case '榜单':
+              return <Ranking size={size} color={color} />;
             case '我的':
               return <ScanFace size={size} color={color} />;
             default:
@@ -60,7 +61,7 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="社区" component={PostScreen} />
       <Tab.Screen name="秒答" component={AnswerScreen} />
       <Tab.Screen name="题库" component={QuestionScreen} />
-      <Tab.Screen name="消息" component={MessageScreen} />
+      <Tab.Screen name="榜单" component={RankScreen} />
       <Tab.Screen name="我的" component={ProfileNavigator} 
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileMain';
