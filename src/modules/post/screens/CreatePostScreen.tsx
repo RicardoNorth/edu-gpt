@@ -80,7 +80,7 @@ export default function CreatePostScreen() {
 
       formData.append('json', JSON.stringify({
         title: title,
-        content: content.replace(/\n/g, '\\\\n'), // 🔥 注意这里替换成 '\\\\n'
+        content: content.replace(/\n/g, '\\\\n'),
       }));
 
       images.forEach((uri, index) => {

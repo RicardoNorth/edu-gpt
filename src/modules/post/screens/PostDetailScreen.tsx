@@ -60,6 +60,7 @@ export default function PostDetailScreen() {
       if (json.code === 10000) {
         const data = json.data;
         console.log('📦 帖子详情接口返回数据:', data);
+        data.is_liked = Number(data.like_status ?? 0);
         data.content = data.content.replace(/\\n/g, '\n');
         setPost(data);
 
@@ -105,17 +106,16 @@ export default function PostDetailScreen() {
     <SafeAreaView style={styles.safeArea}>
       <PostHeader
         nickname={post.poster_nickname}
-        avatarUrl={post.avatar_url}
+        avatarUrl={post.avatar}
         token={token!}
       />
 
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {post.image_urls?.length > 0 && (
+        {base64Images.length > 0 && (
           <>
             <PostCarousel
-              imageUrls={post.image_urls}
-              token={token!}
+              imageUrls={base64Images}
               onImagePress={(index) => {
                 setCurrentIndex(index);
                 setViewerVisible(true);
@@ -124,7 +124,7 @@ export default function PostDetailScreen() {
             />
             <View style={styles.pageIndicator}>
               <Text style={styles.pageText}>
-                {currentIndex + 1}/{post.image_urls.length}
+                {currentIndex + 1}/{base64Images.length}
               </Text>
             </View>
           </>
@@ -151,7 +151,7 @@ export default function PostDetailScreen() {
       <BottomActionBar
         key={`like-bar-${post.is_liked}`}
         postId={post.id}
-        initialLiked={post.is_liked === 1}
+        initialLiked={String(post.is_liked) === '1'}
         onLikeStatusChange={(status) =>
           setPost((prev: any) => ({ ...prev, is_liked: status ? 1 : 0 }))
         }

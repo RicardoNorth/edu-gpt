@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccfcff',
     borderRadius: 5,
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 4,
     alignSelf: 'flex-start',
     marginBottom: 4,
   },
@@ -92,10 +92,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   score: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#00cfcf',
-    marginLeft: 8,
+    marginRight: 10,
   },
   count: {
     fontSize: 12,
