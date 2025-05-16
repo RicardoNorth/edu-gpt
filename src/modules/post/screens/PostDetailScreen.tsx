@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+// src/modules/post/screens/PostDetailScreen.tsx
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
   Alert,
+  FlatList,
+  ListRenderItemInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ImageViewing from 'react-native-image-viewing';
@@ -16,118 +18,143 @@ import PostHeader from '../components/PostHeader';
 import PostCarousel from '../components/PostCarousel';
 import PostContent from '../components/PostContent';
 import BottomActionBar from '../components/BottomActionBar';
+import CommentItem, { Comment } from '../components/CommentItem';
 
 export default function PostDetailScreen() {
   const route = useRoute();
   const { id } = route.params as { id: number };
-
   const token = useAuthStore((s) => s.token);
-  const [post, setPost] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [viewerVisible, setViewerVisible] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [base64Images, setBase64Images] = useState<string[]>([]);
 
-  const fetchBlobAndConvertToBase64 = async (url: string, token: string) => {
+  /* ------------- 帖子数据 ------------- */
+  const [post, setPost] = useState<any>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  /* ------------- 评论列表 ------------- */
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [cLastId, setCLastId] = useState(0);
+  const [cLoading, setCLoading] = useState(false);
+  const [cHasMore, setCHasMore] = useState(true);
+
+  /* ------------- 大图预览 ------------- */
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIdx, setViewerIdx] = useState(0);
+
+  /* ---------- 工具函数 ---------- */
+  const blobToBase64 = (b: Blob) =>
+    new Promise<string>((re, rj) => {
+      const fr = new FileReader();
+      fr.onloadend = () => re(fr.result as string);
+      fr.onerror = rj;
+      fr.readAsDataURL(b);
+    });
+
+  const fetchImgBase64 = async (url: string) => {
     try {
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const blob = await res.blob();
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.error('图片加载失败', err);
+      return await blobToBase64(blob);
+    } catch {
       return null;
     }
   };
 
-  const fetchPostDetail = async () => {
+  /* ---------- 拉帖子详情 ---------- */
+  const loadPost = async () => {
     try {
-      if (!token) return;
-
-      const res = await fetch(`https://remote.xiaoen.xyz/api/v1/post/auth/${id}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const json = await res.json();
-
-      if (json.code === 10000) {
-        const data = json.data;
-        console.log('📦 帖子详情接口返回数据:', data);
-        data.is_liked = Number(data.like_status ?? 0);
-        data.content = data.content.replace(/\\n/g, '\n');
-        setPost(data);
-
-        if (data.image_urls?.length > 0) {
-          const results = await Promise.all(
-            data.image_urls.map((url: string) =>
-              fetchBlobAndConvertToBase64(url, token)
-            )
-          );
-          setBase64Images(results.filter(Boolean) as string[]);
+      const r = await fetch(
+        `https://remote.xiaoen.xyz/api/v1/post/auth/${id}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
         }
-      } else {
-        Alert.alert('获取详情失败', json.msg || '请稍后再试');
+      );
+      const j = await r.json();
+      if (j.code !== 10000) throw new Error(j.msg);
+      const d = j.data;
+      d.is_liked = Number(d.like_status ?? 0);
+      d.content = d.content.replace(/\\n/g, '\n');
+
+      if (d.image_urls?.length) {
+        const list = await Promise.all(
+          d.image_urls.map((u: string) => fetchImgBase64(u))
+        );
+        setImages(list.filter(Boolean) as string[]);
       }
-    } catch (e) {
-      console.error('获取帖子详情出错', e);
-    } finally {
+
+      setPost(d);           // <- 先写入 post
+      setLoading(false);    // <- 再结束 loading，确保 post 不为空
+    } catch (e: any) {
+      Alert.alert('获取失败', e.message || '请稍后再试');
       setLoading(false);
     }
   };
 
+  /* ---------- 拉评论列表 ---------- */
+  const loadComments = async (refresh = false) => {
+    if (!token || cLoading || (!cHasMore && !refresh)) return;
+    setCLoading(true);
+    try {
+      const r = await fetch(
+        'https://remote.xiaoen.xyz/api/v1/comment/auth/list',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            last_cid: refresh ? 0 : cLastId,
+            post_id: id,
+            size: 10,
+          }),
+        }
+      );
+      const j = await r.json();
+      if (j.code === 10000) {
+        const list: Comment[] = j.data || [];
+        setComments((prev) => (refresh ? list : [...prev, ...list]));
+        if (list.length) setCLastId(list[list.length - 1].id);
+        setCHasMore(list.length === 10);
+      }
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setCLoading(false);
+    }
+  };
+
+  /* ---------- 提供稳定的刷新函数 ---------- */
+  const refreshComments = useCallback(() => loadComments(true), [id, token]);
+
+  /* ---------- mount ---------- */
   useEffect(() => {
-    fetchPostDetail();
+    loadPost();
+    loadComments(true);
   }, [id]);
 
-  if (loading) {
+  /* ---------- Header 用 useMemo，避免评论变化导致头图闪 ---------- */
+  const memoHeader = useMemo(() => {
+    if (!post) return null;                   // 防空
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007BFF" />
-      </View>
-    );
-  }
+      <>
+        <PostHeader
+          nickname={post.poster_nickname}
+          avatarUrl={post.avatar}
+          token={token!}
+        />
 
-  if (!post) {
-    return (
-      <View style={styles.centered}>
-        <Text>加载失败，请返回重试</Text>
-      </View>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <PostHeader
-        nickname={post.poster_nickname}
-        avatarUrl={post.avatar}
-        token={token!}
-      />
-
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {base64Images.length > 0 && (
-          <>
-            <PostCarousel
-              imageUrls={base64Images}
-              onImagePress={(index) => {
-                setCurrentIndex(index);
-                setViewerVisible(true);
-              }}
-              onVisibleIndexChange={(index) => setCurrentIndex(index)}
-            />
-            <View style={styles.pageIndicator}>
-              <Text style={styles.pageText}>
-                {currentIndex + 1}/{base64Images.length}
-              </Text>
-            </View>
-          </>
+        {images.length > 0 && (
+          <PostCarousel
+            imageUrls={images}
+            onImagePress={(i) => {
+              setViewerIdx(i);
+              setViewerVisible(true);
+            }}
+            onVisibleIndexChange={setViewerIdx}
+          />
         )}
 
         <PostContent
@@ -137,40 +164,79 @@ export default function PostDetailScreen() {
           campus={post.poster_campus}
           createdAt={post.create_at}
         />
-      </ScrollView>
 
+        <View style={{ height: 8, backgroundColor: '#f5f5f5', width: '100%' }} />
+      </>
+    );
+  }, [post, images, token]);
+
+  const renderFooter = () =>
+    cLoading ? (
+      <ActivityIndicator style={{ marginVertical: 12 }} />
+    ) : !cHasMore && comments.length ? (
+      <Text style={styles.endText}>—— 已经到底啦 ——</Text>
+    ) : null;
+
+  const renderItem = ({ item }: ListRenderItemInfo<Comment>) => (
+    <CommentItem
+      postId={id}
+      comment={item}
+      onLikeChange={(liked, cnt) =>
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === item.id ? { ...c, like_status: liked ? 1 : 0, like_count: cnt } : c
+          )
+        )
+      }
+    />
+  );
+
+  /* ---------- loading ---------- */
+  if (loading || !post)   // 防空：post 还没到手
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007BFF" />
+      </View>
+    );
+
+  /* ---------- 页面 ---------- */
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <FlatList
+        data={comments}
+        keyExtractor={(it) => it.id.toString()}
+        renderItem={renderItem}
+        ListHeaderComponent={memoHeader}
+        ItemSeparatorComponent={() => <View style={styles.sep} />}
+        onEndReached={() => loadComments(false)}
+        onEndReachedThreshold={0.25}
+        ListFooterComponent={renderFooter}
+      />
+
+      {/* 大图预览 */}
       <ImageViewing
-        images={base64Images.map((uri) => ({ uri }))}
-        imageIndex={currentIndex}
+        images={images.map((u) => ({ uri: u }))}
+        imageIndex={viewerIdx}
         visible={viewerVisible}
         onRequestClose={() => setViewerVisible(false)}
-        swipeToCloseEnabled
-        doubleTapToZoomEnabled
       />
 
       <BottomActionBar
-        key={`like-bar-${post.is_liked}`}
         postId={post.id}
-        initialLiked={String(post.is_liked) === '1'}
-        onLikeStatusChange={(status) =>
-          setPost((prev: any) => ({ ...prev, is_liked: status ? 1 : 0 }))
+        initialLiked={post.is_liked === 1}
+        onRefresh={refreshComments}             // 只刷新评论
+        onLikeStatusChange={(liked) =>
+          setPost((p: any) => ({ ...p, is_liked: liked ? 1 : 0 }))
         }
       />
     </SafeAreaView>
   );
 }
 
+/* ---------- 样式 ---------- */
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#fff' },
-  pageIndicator: {
-    position: 'absolute',
-    bottom: 12,
-    right: 16,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  pageText: { color: '#fff', fontSize: 13 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  sep: { height: 1, backgroundColor: '#eee', marginLeft: 60 },
+  endText: { textAlign: 'center', color: '#999', marginVertical: 8, fontSize: 12 },
 });

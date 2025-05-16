@@ -1,26 +1,41 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Pressable, StyleSheet, Text, Alert, Animated } from 'react-native';
+// src/modules/post/components/BottomActionBar.tsx
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Pressable,
+  StyleSheet,
+  Text,
+  Animated,
+  TextInput,
+  Keyboard,
+  Alert,
+} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuthStore } from '../../auth/store';
 
 interface Props {
   postId: number;
   initialLiked: boolean;
-  onLikeStatusChange?: (newStatus: boolean) => void;
+  /** 发送成功后刷新评论列表 */
+  onRefresh: () => void;
+  onLikeStatusChange?: (liked: boolean) => void;
 }
 
-export default function BottomActionBar({ postId, initialLiked, onLikeStatusChange }: Props) {
+export default function BottomActionBar({
+  postId,
+  initialLiked,
+  onRefresh,
+  onLikeStatusChange,
+}: Props) {
+  /* ---------------- 全局状态 ---------------- */
   const token = useAuthStore((s) => s.token);
-  const [liked, setLiked] = useState(initialLiked);
-  const [loading, setLoading] = useState(false);
 
+  /* ---------------- 点赞逻辑 ---------------- */
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeLoading, setLikeLoading] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    setLiked(initialLiked);
-  }, [initialLiked]);
-
-  const triggerLikeAnimation = () => {
+  const triggerLikeAnim = () => {
     scaleAnim.setValue(1.2);
     Animated.spring(scaleAnim, {
       toValue: 1,
@@ -30,8 +45,8 @@ export default function BottomActionBar({ postId, initialLiked, onLikeStatusChan
   };
 
   const toggleLike = async () => {
-    if (!token || loading) return;
-    setLoading(true);
+    if (!token || likeLoading) return;
+    setLikeLoading(true);
 
     try {
       const res = await fetch('https://remote.xiaoen.xyz/api/v1/post/auth/like', {
@@ -40,85 +55,121 @@ export default function BottomActionBar({ postId, initialLiked, onLikeStatusChan
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          post_id: postId,
-          like_status: liked ? 0 : 1,
-        }),
+        body: JSON.stringify({ post_id: postId, like_status: liked ? 0 : 1 }),
       });
-
       const json = await res.json();
 
       if (json.code === 10000) {
-        setLiked((prev) => {
-          const newStatus = !prev;
-
-          // 播放动画
-          triggerLikeAnimation();
-
-          setTimeout(() => {
-            onLikeStatusChange?.(newStatus);
-          }, 0);
-
-          return newStatus;
-        });
+        const newStatus = !liked;
+        setLiked(newStatus);
+        triggerLikeAnim();
+        onLikeStatusChange?.(newStatus);
       } else {
         Alert.alert('操作失败', json.msg || '请稍后再试');
       }
-    } catch (err) {
-      console.error('点赞失败:', err);
-      Alert.alert('网络错误', '请检查网络连接');
+    } catch {
+      Alert.alert('网络错误', '请检查网络');
     } finally {
-      setLoading(false);
+      setLikeLoading(false);
     }
   };
 
+  /* ---------------- 发送评论 ---------------- */
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    const content = text.trim();
+    if (!content || sending) return;
+    if (!token) return Alert.alert('请先登录');
+
+    setSending(true);
+    try {
+      const res = await fetch('https://remote.xiaoen.xyz/api/v1/comment/auth/create', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content, post_id: postId }),
+      });
+      const json = await res.json();
+
+      if (json.code === 10000) {
+        // 成功：直接通知父组件刷新评论列表
+        onRefresh();
+        setText('');
+        Keyboard.dismiss();
+      } else {
+        Alert.alert('发送失败', json.msg || '请稍后再试');
+      }
+    } catch {
+      Alert.alert('网络错误', '请检查网络');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  /* ---------------- 渲染 ---------------- */
   return (
     <View style={styles.bar}>
-      
-      <Pressable style={styles.button}>
-        <Ionicons name="bookmark-outline" size={24} color="#555" />
-        <Text style={styles.label}>收藏</Text>
-      </Pressable>
+      {/* 输入框 */}
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={text}
+          onChangeText={setText}
+          placeholder="写评论..."
+          multiline
+        />
+        <Pressable onPress={handleSend} disabled={sending || !text.trim()}>
+          <Ionicons
+            name="send"
+            size={22}
+            color={sending || !text.trim() ? '#bbb' : '#007aff'}
+          />
+        </Pressable>
+      </View>
 
-      <Pressable style={styles.button}>
-        <Ionicons name="chatbubble-outline" size={24} color="#555" />
-        <Text style={styles.label}>评论</Text>
-      </Pressable>
-
-      <Pressable onPress={toggleLike} style={styles.button}>
+      {/* 点赞 */}
+      <Pressable style={styles.likeBtn} onPress={toggleLike}>
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}
-            size={24}
+            size={26}
             color={liked ? '#ff4d4f' : '#555'}
           />
         </Animated.View>
-        <Text style={styles.label}>点赞</Text>
-      </Pressable>
-
-      <Pressable style={styles.button}>
-        <Ionicons name="share-social-outline" size={24} color="#555" />
-        <Text style={styles.label}>分享</Text>
       </Pressable>
     </View>
   );
 }
 
+/* ---------------- 样式 ---------------- */
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderTopWidth: 1,
     borderColor: '#eee',
     backgroundColor: '#fff',
-    paddingVertical: 8,
   },
-  button: {
-    alignItems: 'center',
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 18,
+    marginRight: 8,
   },
-  label: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 2,
+  input: {
+    flex: 1,
+    maxHeight: 100,
+    fontSize: 15,
   },
+  likeBtn: { alignItems: 'center', paddingHorizontal: 10, paddingBottom: 4 },
 });
