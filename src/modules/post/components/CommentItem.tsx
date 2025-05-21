@@ -11,11 +11,12 @@ import {
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuthStore } from '../../auth/store';
-import ReplyItem from './ReplyItem';
+import ReplyItem, { Reply } from './ReplyItem';
 
-interface Comment {
+export interface Comment {
   id: number;
   poster_nickname: string;
+  poster_id: number;
   avatar_url: string;
   content: string;
   create_at: string;
@@ -23,7 +24,6 @@ interface Comment {
   like_status?: number;
   comment_count: number;
 }
-export type { Comment };
 
 interface Props {
   postId: number;
@@ -38,33 +38,32 @@ export default function CommentItem({
   onLikeChange,
   onReplyIntent,
 }: Props) {
-  /* 全局 */
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
-  /* 点赞 */
   const [liked, setLiked] = useState(comment.like_status === 1);
   const [likeCnt, setLikeCnt] = useState(comment.like_count);
 
-  /* 回复列表 */
   const [showReplies, setShowReplies] = useState(false);
-  const [replies, setReplies] = useState<any[]>([]);
+  const [replies, setReplies] = useState<Reply[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [lastScid, setLastScid] = useState(0);
   const [hasMoreReply, setHasMoreReply] = useState(true);
-  const [initFetched, setInitFetched] = useState(false);        // ★
+  const [visibleCount, setVisibleCount] = useState(3); // 当前展示的数量
 
-  /* 头像同步 */
   const [avatarUrl, setAvatarUrl] = useState(comment.avatar_url);
   useEffect(() => {
-    if (user && comment.poster_nickname === user.nickname && user.avatar_url) {
+    if (
+      user &&
+      comment.poster_nickname === user.nickname &&
+      user.avatar_url
+    ) {
       setAvatarUrl(user.avatar_url);
     }
   }, [user?.avatar_url]);
 
   const avatarSrc = `${avatarUrl}?v=${Date.now()}`;
 
-  /* 点赞接口 */
   const toggleLike = async () => {
     if (!token) return;
     try {
@@ -80,21 +79,20 @@ export default function CommentItem({
             comment_id: comment.id,
             like_status: liked ? 0 : 1,
           }),
-        },
+        }
       );
-      const json = await res.json();
-      if (json.code === 10000) {
-        setLiked(json.like_status === 1);
-        setLikeCnt(json.like_count);
-        onLikeChange(json.like_status === 1, json.like_count);
+      const j = await res.json();
+      if (j.code === 10000) {
+        setLiked(j.like_status === 1);
+        setLikeCnt(j.like_count);
+        onLikeChange(j.like_status === 1, j.like_count);
       }
     } catch {
       Alert.alert('操作失败', '请稍后再试');
     }
   };
 
-  /* 拉取回复列表 */
-  const fetchReplies = async (isRefresh = false) => {
+  const fetchReplies = async () => {
     if (!token || loadingReplies) return;
     setLoadingReplies(true);
     try {
@@ -107,22 +105,17 @@ export default function CommentItem({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            last_scid: isRefresh ? 0 : lastScid,
+            last_scid: 0,
             parent: comment.id,
-            size: 10,
+            size: 100,
           }),
-        },
+        }
       );
-      const json = await res.json();
-      console.log('listreply data：', json.data);
-
-      if (json.code === 10000) {
-        const list = json.data || [];
-        if (isRefresh) setReplies(list);
-        else setReplies((prev) => [...prev, ...list]);
-
-        if (list.length) setLastScid(list[list.length - 1].id);
-        setHasMoreReply(list.length === 10);
+      const j = await res.json();
+      if (j.code === 10000) {
+        const list: Reply[] = j.data || [];
+        setReplies(list);
+        setHasMoreReply(list.length > 3);
       }
     } catch {
       console.error('拉回复失败');
@@ -131,22 +124,37 @@ export default function CommentItem({
     }
   };
 
-  /* 首次挂载：若有子回复就后台预拉 */
   useEffect(() => {
-    if (comment.comment_count > 0 && !initFetched) {
-      fetchReplies(true);
-      setInitFetched(true);
-    }
-  }, []);
+    if (showReplies && replies.length === 0) fetchReplies();
+  }, [showReplies]);
 
-  /* 点击“回复” */
   const handleReplyPress = () => {
     onReplyIntent({
       parent: comment.id,
-      reply: 0,
+      reply: comment.poster_id,
       nick: comment.poster_nickname,
     });
-    if (!showReplies) setShowReplies(true);  // 已经预取，直接展开
+    setShowReplies(true);
+  };
+
+  const renderFlatReplies = () => {
+    return replies.slice(0, visibleCount).map((r) => {
+      const replyToNick =
+        r.reply === comment.poster_id
+          ? comment.poster_nickname
+          : replies.find((x) => x.poster_id === r.reply)?.poster_nickname || '用户';
+
+      return (
+        <View key={r.id} style={{ marginTop: 8, marginLeft: 12 }}>
+          <ReplyItem
+            commentId={comment.id}
+            reply={r}
+            replyToNick={replyToNick}
+            onReplyIntent={onReplyIntent}
+          />
+        </View>
+      );
+    });
   };
 
   return (
@@ -158,18 +166,15 @@ export default function CommentItem({
         }}
         style={styles.avatar}
       />
-
       <View style={{ flex: 1 }}>
         <Text style={styles.nickname}>{comment.poster_nickname}</Text>
         <Text style={styles.content}>{comment.content}</Text>
 
         <View style={styles.row}>
           <Text style={styles.date}>{comment.create_at.slice(0, 10)}</Text>
-
           <Pressable hitSlop={4} onPress={handleReplyPress}>
             <Text style={styles.replyBtn}>回复</Text>
           </Pressable>
-
           <Pressable style={styles.likeArea} onPress={toggleLike} hitSlop={4}>
             <Ionicons
               name={liked ? 'thumbs-up' : 'thumbs-up-outline'}
@@ -182,31 +187,18 @@ export default function CommentItem({
           </Pressable>
         </View>
 
-        {/* 展开回复 */}
         {showReplies && (
-          <>
-            <View style={styles.replyContainer}>
-              {replies.map((r) => (
-                <ReplyItem key={r.id} reply={r} />
-              ))}
-
-              {loadingReplies && <ActivityIndicator size="small" />}
-
-              {hasMoreReply && !loadingReplies && (
-                <Pressable onPress={() => fetchReplies(false)}>
-                  <Text style={styles.loadMoreTxt}>查看更多回复</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* 收起按钮 */}
-            <Pressable onPress={() => setShowReplies(false)} style={styles.collapseBtn}>
-              <Text style={styles.collapseTxt}>收起回复 ∧</Text>
-            </Pressable>
-          </>
+          <View style={styles.replyContainer}>
+            {renderFlatReplies()}
+            {loadingReplies && <ActivityIndicator size="small" />}
+            {replies.length > visibleCount && (
+              <Pressable onPress={() => setVisibleCount((c) => c + 3)}>
+                <Text style={styles.loadMoreTxt}>查看更多回复</Text>
+              </Pressable>
+            )}
+          </View>
         )}
 
-        {/* 折叠时入口 */}
         {!showReplies && comment.comment_count > 0 && (
           <Pressable
             onPress={() => setShowReplies(true)}
@@ -222,22 +214,65 @@ export default function CommentItem({
   );
 }
 
-/* 样式 */
 const styles = StyleSheet.create({
-  wrapper: { flexDirection: 'row', paddingVertical: 12, paddingRight: 12 },
-  avatar: { width: 36, height: 36, borderRadius: 18, marginHorizontal: 12 },
-  nickname: { fontWeight: '600', color: '#333', marginBottom: 2 },
-  content: { color: '#111', fontSize: 15, marginBottom: 6 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  date: { color: '#888', fontSize: 12 },
-  replyBtn: { marginHorizontal: 16, color: '#007aff', fontSize: 13 },
-  likeArea: { flexDirection: 'row', alignItems: 'center' },
-  likeCnt: { marginLeft: 4, fontSize: 12, color: '#777' },
-  replyContainer: { marginTop: 8 },
-  loadMoreTxt: { fontSize: 12, color: '#007aff', marginTop: 6 },
-  viewReplyBtn: { marginTop: 4 },
-  viewReplyTxt: { fontSize: 14, color: '#007aff' },
-  collapseBtn: { marginTop: 4},
-  collapseTxt: { fontSize: 14, color: '#007aff' },
-
+  wrapper: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingRight: 12,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginHorizontal: 12,
+  },
+  nickname: {
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  content: {
+    color: '#111',
+    fontSize: 15,
+    marginBottom: 6,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  date: {
+    color: '#888',
+    fontSize: 12,
+  },
+  replyBtn: {
+    marginHorizontal: 16,
+    color: '#007aff',
+    fontSize: 13,
+  },
+  likeArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  likeCnt: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#777',
+  },
+  replyContainer: {
+    marginTop: 8,
+    marginLeft: -14,
+  },
+  loadMoreTxt: {
+    fontSize: 13,
+    color: '#007aff',
+    marginTop: 6,
+    marginLeft: 20
+  },
+  viewReplyBtn: {
+    marginTop: 4,
+  },
+  viewReplyTxt: {
+    fontSize: 13,
+    color: '#007aff',
+  },
 });

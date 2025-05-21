@@ -1,4 +1,10 @@
-import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
+// src/modules/post/components/BottomActionBar.tsx
+import React, {
+  useState,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import {
   View,
   Pressable,
@@ -12,11 +18,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuthStore } from '../../auth/store';
 
 interface Props {
-  /* --- 输入 & 发送 --- */
-  placeholder: string;                   // “写评论…” / “回复 @nick：”
-  onSend: (text: string) => void;        // 交给父组件决定发评论还是发回复
-
-  /* --- 点赞 --- */
+  placeholder: string;
+  onSend: (text: string) => void;
+  onCancelReply?: () => void;
   postId: number;
   initialLiked: boolean;
   initialLikeCount: number;
@@ -27,6 +31,7 @@ function BottomActionBar(
   {
     placeholder,
     onSend,
+    onCancelReply,
     postId,
     initialLiked,
     initialLikeCount,
@@ -34,60 +39,67 @@ function BottomActionBar(
   }: Props,
   ref: React.Ref<TextInput>,
 ) {
-  /* 全局 token */
   const token = useAuthStore((s) => s.token);
 
-  /* ========== 输入框 ========== */
+  /** 输入框 **/
   const [text, setText] = useState('');
   const inputRef = useRef<TextInput>(null);
-
-  // 让父组件可以 .focus()
-  useImperativeHandle(ref, () => inputRef.current!, []);
+  useImperativeHandle(ref, () => inputRef.current!);
 
   const handleSend = () => {
-    const content = text.trim();
-    if (!content) return;
-    onSend(content);
+    const c = text.trim();
+    if (!c) return;
+    onSend(c);
     setText('');
     Keyboard.dismiss();
   };
 
-  /* ========== 点赞 ========== */
-  const [liked, setLiked]       = useState(initialLiked);
-  const [likeCnt, setLikeCnt]   = useState(initialLikeCount);
+  /** 点赞 **/
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCnt, setLikeCnt] = useState(initialLikeCount);
   const [loadingLike, setLoadingLike] = useState(false);
-
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulse = () => {
     scaleAnim.setValue(1.2);
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 4 }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 4,
+    }).start();
   };
 
   const toggleLike = async () => {
     if (!token || loadingLike) return;
     setLoadingLike(true);
     try {
-      const res = await fetch('https://remote.xiaoen.xyz/api/v1/post/auth/like', {
-        method : 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ post_id: postId, like_status: liked ? 0 : 1 }),
-      });
+      const res = await fetch(
+        'https://remote.xiaoen.xyz/api/v1/post/auth/like',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            post_id: postId,
+            like_status: liked ? 0 : 1,
+          }),
+        }
+      );
       const j = await res.json();
       if (j.code === 10000) {
-        const next = !liked;
-        setLiked(next);
-        setLikeCnt((c) => (next ? c + 1 : c - 1));
+        const nxt = !liked;
+        setLiked(nxt);
+        setLikeCnt((c) => (nxt ? c + 1 : c - 1));
         pulse();
-        onLikeStatusChange?.(next);
+        onLikeStatusChange?.(nxt);
       }
-    } catch { /* ignore */ }
+    } catch {}
     setLoadingLike(false);
   };
 
-  /* ========== UI ========== */
   return (
     <View style={styles.bar}>
-      {/* 输入区 */}
       <View style={styles.inputWrapper}>
         <TextInput
           ref={inputRef}
@@ -96,6 +108,7 @@ function BottomActionBar(
           onChangeText={setText}
           placeholder={placeholder}
           multiline
+          onBlur={() => onCancelReply?.()}
         />
         <Pressable onPress={handleSend} disabled={!text.trim()}>
           <Ionicons
@@ -106,7 +119,6 @@ function BottomActionBar(
         </Pressable>
       </View>
 
-      {/* 点赞 */}
       <Pressable style={styles.likeWrapper} onPress={toggleLike}>
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <Ionicons
@@ -115,15 +127,17 @@ function BottomActionBar(
             color={liked ? '#ff4d4f' : '#555'}
           />
         </Animated.View>
-        <Text style={[styles.likeCnt, liked && { color: '#ff4d4f' }]}>{likeCnt}</Text>
+        <Text style={[styles.likeCnt, liked && { color: '#ff4d4f' }]}>
+          {likeCnt}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
-export default forwardRef(BottomActionBar);
+// 关键：告诉 TS 这是一个 Ref 转发组件，接收 TextInput 的 ref
+export default forwardRef<TextInput, Props>(BottomActionBar);
 
-/* ---------- 样式 ---------- */
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
