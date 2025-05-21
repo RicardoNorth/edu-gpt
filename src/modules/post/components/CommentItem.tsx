@@ -23,7 +23,6 @@ interface Comment {
   like_status?: number;
   comment_count: number;
 }
-
 export type { Comment };
 
 interface Props {
@@ -33,29 +32,51 @@ interface Props {
 }
 
 export default function CommentItem({ postId, comment, onLikeChange }: Props) {
+  /* ========== 全局登录态 ========== */
   const token = useAuthStore((s) => s.token);
-  const [liked, setLiked] = useState(comment.like_status === 1);
+  const user  = useAuthStore((s) => s.user);        // 取当前登录用户
+
+  /* ========== 点赞本地状态 ========== */
+  const [liked,   setLiked]   = useState(comment.like_status === 1);
   const [likeCnt, setLikeCnt] = useState(comment.like_count);
-  const [showReplies, setShowReplies] = useState(false);
-  const [replies, setReplies] = useState<any[]>([]);
+
+  /* ========== 回复相关 ========== */
+  const [showReplies,  setShowReplies]  = useState(false);
+  const [replies,      setReplies]      = useState<any[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
-  const [lastScid, setLastScid] = useState(0);
+  const [lastScid,     setLastScid]     = useState(0);
   const [hasMoreReply, setHasMoreReply] = useState(true);
 
+  /* ========== 头像本地状态 ========== */
+  // 先用接口返回的 URL；如果这条评论是“我自己”发的，后面会更新
+  const [avatarUrl, setAvatarUrl] = useState(comment.avatar_url);
+
+  /* ========= 接口点赞后，同步父组件 & 本地 ========== */
   useEffect(() => {
     setLiked(comment.like_status === 1);
     setLikeCnt(comment.like_count);
   }, [comment.like_status, comment.like_count]);
 
-  /** 点赞/取消点赞 */
+  /* ========= 当我换头像时，把自己的评论头像同步过来 ========== */
+  useEffect(() => {
+    if (!user) return;
+    if (comment.poster_nickname === user.nickname && user.avatar_url) {
+      setAvatarUrl(user.avatar_url);     // 写入最新 URL
+    }
+  }, [user?.avatar_url]);
+
+  /* ========= 封装最终用于 <Image> 的 uri，带版本戳破缓存 ========== */
+  const avatarSrc = `${avatarUrl}?v=${Date.now()}`;
+
+  /* ========= 点赞 / 取消点赞 ========== */
   const toggleLike = async () => {
     if (!token) return;
     try {
       const res = await fetch('https://remote.xiaoen.xyz/api/v1/comment/auth/like', {
-        method: 'POST',
+        method : 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          comment_id: comment.id,
+        body   : JSON.stringify({
+          comment_id : comment.id,
           like_status: liked ? 0 : 1,
         }),
       });
@@ -70,18 +91,18 @@ export default function CommentItem({ postId, comment, onLikeChange }: Props) {
     }
   };
 
-  /** 拉回复 */
+  /* ========= 拉取回复 ========== */
   const fetchReplies = async (isRefresh = false) => {
     if (!token || loadingReplies) return;
     setLoadingReplies(true);
     try {
       const res = await fetch('https://remote.xiaoen.xyz/api/v1/comment/auth/listreply', {
-        method: 'POST',
+        method : 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body   : JSON.stringify({
           last_scid: isRefresh ? 0 : lastScid,
-          parent: comment.id,
-          size: 10,
+          parent   : comment.id,
+          size     : 10,
         }),
       });
       const json = await res.json();
@@ -105,11 +126,15 @@ export default function CommentItem({ postId, comment, onLikeChange }: Props) {
     setShowReplies(!showReplies);
   };
 
+  /* ========== UI ========== */
   return (
     <View style={styles.wrapper}>
       {/* 头像 */}
       <Image
-        source={{ uri: comment.avatar_url }}
+        source={{
+          uri: avatarSrc,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        }}
         style={styles.avatar}
         contentFit="cover"
       />
@@ -166,6 +191,7 @@ export default function CommentItem({ postId, comment, onLikeChange }: Props) {
   );
 }
 
+/* ---------- 样式 ---------- */
 const styles = StyleSheet.create({
   wrapper: { flexDirection: 'row', paddingVertical: 12, paddingRight: 12 },
   avatar: { width: 36, height: 36, borderRadius: 18, marginHorizontal: 12 },

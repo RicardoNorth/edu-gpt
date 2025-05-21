@@ -9,7 +9,7 @@ interface PostCardProps {
   title: string;
   preview: string;
   likes: number;
-  saves: number;
+  comments: number;
   onPress?: () => void;
 }
 
@@ -20,13 +20,17 @@ export default function PostCard({
   title,
   preview,
   likes,
-  saves,
+  comments,
   onPress,
 }: PostCardProps) {
 
   return (
     <Pressable onPress={onPress} style={styles.card}>
-      <Text style={styles.title}>{title}</Text>
+      <Text 
+        style={styles.title}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >{title}</Text>
 
       <View style={styles.header}>
         <Image
@@ -44,11 +48,15 @@ export default function PostCard({
         <Text style={styles.nickname}>{nickname}</Text>
       </View>
 
-      <Text style={styles.preview}>{preview}</Text>
+      <Text 
+        style={styles.preview}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >{preview}</Text>
 
       <View style={styles.stats}>
         <Text style={styles.statText}>赞同 {likes}</Text>
-        <Text style={styles.statText}>收藏 {saves}</Text>
+        <Text style={styles.statText}>评论 {comments}</Text>
       </View>
     </Pressable>
   );

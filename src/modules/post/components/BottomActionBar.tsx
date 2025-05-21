@@ -15,26 +15,28 @@ import { useAuthStore } from '../../auth/store';
 
 interface Props {
   postId: number;
-  initialLiked: boolean;
-  /** 发送成功后刷新评论列表 */
-  onRefresh: () => void;
+  initialLiked: boolean;      // 初始点赞状态
+  initialLikeCount: number;   // 初始点赞数 ★ 新增
+  onRefresh: () => void;      // 评论发送成功后刷新
   onLikeStatusChange?: (liked: boolean) => void;
 }
 
 export default function BottomActionBar({
   postId,
   initialLiked,
+  initialLikeCount,
   onRefresh,
   onLikeStatusChange,
 }: Props) {
-  /* ---------------- 全局状态 ---------------- */
+  /* ---------- 全局 ---------- */
   const token = useAuthStore((s) => s.token);
 
-  /* ---------------- 点赞逻辑 ---------------- */
-  const [liked, setLiked] = useState(initialLiked);
+  /* ---------- 点赞相关 ---------- */
+  const [liked, setLiked]       = useState(initialLiked);
+  const [likeCnt, setLikeCnt]   = useState(initialLikeCount);  // 记录数字
   const [likeLoading, setLikeLoading] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const triggerLikeAnim = () => {
     scaleAnim.setValue(1.2);
     Animated.spring(scaleAnim, {
@@ -47,25 +49,24 @@ export default function BottomActionBar({
   const toggleLike = async () => {
     if (!token || likeLoading) return;
     setLikeLoading(true);
-
     try {
       const res = await fetch('https://remote.xiaoen.xyz/api/v1/post/auth/like', {
-        method: 'POST',
+        method : 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization : `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ post_id: postId, like_status: liked ? 0 : 1 }),
       });
-      const json = await res.json();
-
-      if (json.code === 10000) {
-        const newStatus = !liked;
-        setLiked(newStatus);
+      const j = await res.json();
+      if (j.code === 10000) {
+        const nextLiked = !liked;
+        setLiked(nextLiked);
+        setLikeCnt((c) => (nextLiked ? c + 1 : c - 1));
         triggerLikeAnim();
-        onLikeStatusChange?.(newStatus);
+        onLikeStatusChange?.(nextLiked);
       } else {
-        Alert.alert('操作失败', json.msg || '请稍后再试');
+        Alert.alert('操作失败', j.msg || '请稍后再试');
       }
     } catch {
       Alert.alert('网络错误', '请检查网络');
@@ -74,7 +75,7 @@ export default function BottomActionBar({
     }
   };
 
-  /* ---------------- 发送评论 ---------------- */
+  /* ---------- 发送评论 ---------- */
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -82,26 +83,23 @@ export default function BottomActionBar({
     const content = text.trim();
     if (!content || sending) return;
     if (!token) return Alert.alert('请先登录');
-
     setSending(true);
     try {
       const res = await fetch('https://remote.xiaoen.xyz/api/v1/comment/auth/create', {
-        method: 'POST',
+        method : 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization : `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ content, post_id: postId }),
       });
-      const json = await res.json();
-
-      if (json.code === 10000) {
-        // 成功：直接通知父组件刷新评论列表
-        onRefresh();
+      const j = await res.json();
+      if (j.code === 10000) {
         setText('');
         Keyboard.dismiss();
+        onRefresh();                       // 刷新评论
       } else {
-        Alert.alert('发送失败', json.msg || '请稍后再试');
+        Alert.alert('发送失败', j.msg || '请稍后再试');
       }
     } catch {
       Alert.alert('网络错误', '请检查网络');
@@ -110,10 +108,10 @@ export default function BottomActionBar({
     }
   };
 
-  /* ---------------- 渲染 ---------------- */
+  /* ---------- UI ---------- */
   return (
     <View style={styles.bar}>
-      {/* 输入框 */}
+      {/* 输入框 + 发送 */}
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
@@ -131,8 +129,8 @@ export default function BottomActionBar({
         </Pressable>
       </View>
 
-      {/* 点赞 */}
-      <Pressable style={styles.likeBtn} onPress={toggleLike}>
+      {/* 点赞：图标 + 数字 */}
+      <Pressable style={styles.likeWrapper} onPress={toggleLike}>
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}
@@ -140,12 +138,15 @@ export default function BottomActionBar({
             color={liked ? '#ff4d4f' : '#555'}
           />
         </Animated.View>
+        <Text style={[styles.likeCnt, liked && { color: '#ff4d4f' }]}>
+          {likeCnt}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
-/* ---------------- 样式 ---------------- */
+/* ---------- 样式 ---------- */
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
@@ -156,10 +157,11 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     backgroundColor: '#fff',
   },
+  /* 输入区 */
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
     backgroundColor: '#f5f5f5',
@@ -171,5 +173,15 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     fontSize: 15,
   },
-  likeBtn: { alignItems: 'center', paddingHorizontal: 10, paddingBottom: 4 },
+  /* 点赞列 */
+  likeWrapper: {
+    width: 48,
+    alignItems: 'center',
+    paddingBottom: 2,
+  },
+  likeCnt: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 2,
+  },
 });
