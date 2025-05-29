@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginRight: 20,
+    marginRight: 10,
   },
   avatarPlaceholderLarge: {
     width: 80,

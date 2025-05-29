@@ -47,7 +47,7 @@ export default function CourseDetailScreen() {
 
   return (
     <LinearGradient
-      colors={['#c4d7d6', 'white']}
+      colors={['#D1DEE4', 'white']}
       style={{ flex: 1 }}
     >
       <SafeAreaView style={styles.safeArea}>
