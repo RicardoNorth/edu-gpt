@@ -11,14 +11,20 @@ export default function EditAndSearchButtons() {
         style={styles.outlinedButton}
         onPress={() => navigation.navigate('EditProfile' as never)}
       >
-        <Text style={styles.buttonText}>编 辑 头 像 与 个 人 资 料 信 息</Text>
+        <Text style={styles.buttonText}>编辑资料信息</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.outlinedButton}
+        onPress={() => navigation.navigate('EditProfile' as never)}
+      >
+        <Text style={styles.buttonText}>搜索好友</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-around', width: '95%', alignSelf: 'center', marginBottom: 20 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-around', width: '95%', alignSelf: 'center', marginBottom: 0 },
   outlinedButton: { flex: 1, marginHorizontal: 6, paddingVertical: 10, borderWidth: 1, borderColor: '#2B333E', borderRadius: 8, alignItems: 'center', backgroundColor: '#fff' },
   buttonText: { fontSize: 14, color: '#2B333E', fontWeight: '600' },
 });

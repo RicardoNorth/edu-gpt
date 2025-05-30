@@ -1,0 +1,54 @@
+{
+  "data": [
+    {
+      "id": 429052,
+      "code": "1000023B--046",
+      "adminClasses": "信息计22-1班",
+      "name": "大学物理实验（下）",
+      "type": "通识必修课",
+      "teachers": ["李媛"],
+      "studentCount": 41,
+      "weeks": "2~14周",
+      "credits": 1,
+      "examMode": "其它",
+      "schedule": [
+        {
+          "startTime": 1400,
+          "endTime": 1550,
+          "id": 429052,
+          "weekday": 6,
+          "weekIndex": 2,
+          "room": "翠七教206"
+        },
+        {
+          "startTime": 1400,
+          "endTime": 1550,
+          "id": 429052,
+          "weekday": 6,
+          "weekIndex": 3,
+          "room": "翠七教206"
+        },{
+          "startTime": 1400,
+          "endTime": 1550,
+          "id": 429052,
+          "weekday": 6,
+          "weekIndex": 14,
+          "room": "翠七教206"
+        }
+      ]
+    },
+    {
+      "id": 435219,
+      "code": "0700031M--002",
+      "adminClasses": "2019级，2020级，2021级，2022级，2023级",
+      "name": "《共产党宣言》导读",
+      "type": "慕课-哲学、历史与心理学",
+      "teachers": ["卢坤林"],
+      "studentCount": 120,
+      "weeks": "",
+      "credits": 1.5,
+      "examMode": "其它",
+      "schedule": []
+    }
+  ]
+}

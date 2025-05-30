@@ -3,20 +3,16 @@ import { ScrollView, StyleSheet } from 'react-native';
 import BackgroundBanner from '../components/BackgroundBanner';
 import AvatarCard from '../components/AvatarCard';
 import EditAndSearchButtons from '../components/EditAndSearchButtons';
-import RecommendedUserList from '../components/RecommendedUserList';
-import DurationChart from '../components/DurationChart';
+import ScheduleTable from '../components/ScheduleTable';
+import scheduleData from '../mock/scheduleData.json';
 
 export default function ProfileScreen() {
   return (
-    <ScrollView 
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <BackgroundBanner />
       <AvatarCard />
       <EditAndSearchButtons />
-      <DurationChart />
-      <RecommendedUserList />
+      <ScheduleTable data={scheduleData.data} />
     </ScrollView>
   );
 }
