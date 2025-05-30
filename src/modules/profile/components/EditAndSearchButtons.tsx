@@ -11,13 +11,7 @@ export default function EditAndSearchButtons() {
         style={styles.outlinedButton}
         onPress={() => navigation.navigate('EditProfile' as never)}
       >
-        <Text style={styles.buttonText}>编辑资料</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.outlinedButton}
-        onPress={() => navigation.navigate('BrowseHistory' as never)}
-      >
-        <Text style={styles.buttonText}>浏览记录</Text>
+        <Text style={styles.buttonText}>编 辑 头 像 与 个 人 资 料 信 息</Text>
       </TouchableOpacity>
     </View>
   );

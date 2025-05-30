@@ -103,50 +103,58 @@ export default function EditProfileScreen() {
   };
   
   const handleSave = async () => {
-    if (!user) return;
+  if (!user) return;
 
-    setLoading(true);
-    try {
-      let newAvatarBase64 = user.avatar_path;
+  if (nickname.length > 8) {
+    Alert.alert('昵称过长', '昵称不能超过8个字');
+    return;
+  }
+  if (signature.length > 17) {
+    Alert.alert('签名过长', '签名不能超过17个字');
+    return;
+  }
 
-      if (localAvatarUri) {
-        newAvatarBase64 = await uploadAvatarAndGetBase64(localAvatarUri);
-      }
-      
-      // 更新昵称和签名
-      const updateRes = await fetch('https://remote.xiaoen.xyz/api/v1/user/auth/update_userinfo', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: user.id,
-          nickname,
-          signature,
-        }),
-      });
+  setLoading(true);
+  try {
+    let newAvatarBase64 = user.avatar_path;
 
-      const updateJson = await updateRes.json();
-
-      if (updateJson.code === 10000) {
-        setUser({
-          ...user,
-          nickname: updateJson.data.nickname,
-          signature: updateJson.data.signature,
-          avatar_path: newAvatarBase64,
-        });
-        Alert.alert('保存成功');
-        navigation.goBack();
-      } else {
-        Alert.alert('保存失败', updateJson.msg || '请稍后再试');
-      }
-    } catch (error) {
-      console.error('保存出错:', error);
-      Alert.alert('保存失败', '发生未知错误');
+    if (localAvatarUri) {
+      newAvatarBase64 = await uploadAvatarAndGetBase64(localAvatarUri);
     }
-    setLoading(false);
-  };
+
+    const updateRes = await fetch('https://remote.xiaoen.xyz/api/v1/user/auth/update_userinfo', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: user.id,
+        nickname,
+        signature,
+      }),
+    });
+
+    const updateJson = await updateRes.json();
+
+    if (updateJson.code === 10000) {
+      setUser({
+        ...user,
+        nickname: updateJson.data.nickname,
+        signature: updateJson.data.signature,
+        avatar_path: newAvatarBase64,
+      });
+      Alert.alert('保存成功');
+      navigation.goBack();
+    } else {
+      Alert.alert('保存失败', updateJson.msg || '请稍后再试');
+    }
+  } catch (error) {
+    console.error('保存出错:', error);
+    Alert.alert('保存失败', '发生未知错误');
+  }
+  setLoading(false);
+};
 
   if (!user) return null;
 
@@ -160,13 +168,16 @@ export default function EditProfileScreen() {
           />
         </TouchableOpacity>
 
-        <Text style={styles.label}>昵称</Text>
         <TextInput
           style={styles.input}
           value={nickname}
           onChangeText={setNickname}
           placeholder="请输入昵称"
+          maxLength={8}
         />
+        <Text style={{ alignSelf: 'flex-end', color: '#999', marginBottom: 10 }}>
+          {nickname.length}/8
+        </Text>
 
         <Text style={styles.label}>个性签名</Text>
         <TextInput
@@ -175,15 +186,19 @@ export default function EditProfileScreen() {
           onChangeText={setSignature}
           placeholder="这个人很懒，什么都没写～"
           multiline
+          maxLength={17}
         />
+        <Text style={{ alignSelf: 'flex-end', color: '#999', marginBottom: 10 }}>
+          {signature.length}/17
+        </Text>
 
         <TouchableOpacity
-          style={[styles.saveButton, loading && { backgroundColor: '#999' }]}
+          style={[styles.saveButton, loading && { backgroundColor: '#FAA2AF' }]}
           onPress={handleSave}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#FAA2AF" />
           ) : (
             <Text style={styles.saveButtonText}>保存</Text>
           )}
@@ -224,7 +239,7 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: 20,
     width: '100%',
-    backgroundColor: '#2B333E',
+    backgroundColor: '#FAA2AF',
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',

@@ -63,7 +63,7 @@ export default function PostListScreen() {
         },
         body: JSON.stringify({
           last_pid: isRefresh ? 0 : lastPid,
-          size    : 5,
+          size    : 8,
         }),
       });
       const json = await res.json();
