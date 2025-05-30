@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store';
@@ -71,50 +72,54 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
-        {/* 跳过按钮 */}
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={() => {
-            setIsLoggedIn();
-          }}
-        >
-          <Text style={styles.skipText}>跳过</Text>
-        </TouchableOpacity>
-
-        {/* 登录内容 */}
-        <View style={styles.container}>
-          <Text style={styles.title}>信息门户，登录一下</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="学号"
-            keyboardType="numeric"
-            value={studentId}
-            onChangeText={setStudentId}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="密码"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          {error !== '' && <Text style={styles.error}>{error}</Text>}
+    <ImageBackground
+      source={require('../../../../assets/splash-icon.png')}
+      style={{ flex: 1 }}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           <TouchableOpacity
-            style={styles.button}
-            onPress={handleLogin}
-            disabled={loading}
+            style={styles.skipButton}
+            onPress={() => {
+              setIsLoggedIn();
+            }}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>登录</Text>
-            )}
+            <Text style={styles.skipText}>跳过</Text>
           </TouchableOpacity>
+
+          <View style={styles.container}>
+            <Text style={styles.title}>信息门户，登录一下</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="学号"
+              keyboardType="numeric"
+              value={studentId}
+              onChangeText={setStudentId}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="密码"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+            {error !== '' && <Text style={styles.error}>{error}</Text>}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>登录</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
@@ -129,10 +134,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 24,
+    color: '#fff',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
@@ -143,6 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 12,
+    marginBottom: 240
   },
   buttonText: {
     color: '#fff',
@@ -162,7 +168,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    color: '#666',
+    color: '#eee',
     textDecorationLine: 'underline',
   },
 });
