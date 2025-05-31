@@ -79,15 +79,6 @@ export default function LoginScreen() {
     >
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={() => {
-              setIsLoggedIn();
-            }}
-          >
-            <Text style={styles.skipText}>跳过</Text>
-          </TouchableOpacity>
-
           <View style={styles.container}>
             <Text style={styles.title}>信息门户，登录一下</Text>
             <TextInput
@@ -158,17 +149,5 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
     marginTop: 8,
-  },
-  skipButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 10,
-    padding: 6,
-  },
-  skipText: {
-    fontSize: 14,
-    color: '#eee',
-    textDecorationLine: 'underline',
-  },
+  }
 });
